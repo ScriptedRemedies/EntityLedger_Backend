@@ -1,6 +1,9 @@
 package com.ledger.ledger_api.exception;
 
-// Catching things like fetching a season that doesn't exist
+// Used when a user tries to fetch a Trial, Season, or Killer that doesn't exist in the database
 
-public class ResourceNotFoundException {
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
 }
