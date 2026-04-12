@@ -1,17 +1,26 @@
 package com.ledger.ledger_api.strategy;
 
 import com.ledger.ledger_api.dto.TrialSubmitRequest;
-import com.ledger.ledger_api.entity.Season;
-import com.ledger.ledger_api.entity.SeasonRoster;
-import com.ledger.ledger_api.entity.Trial;
-import com.ledger.ledger_api.entity.TrialSurvivor;
+import com.ledger.ledger_api.entity.*;
 import com.ledger.ledger_api.exception.GameRuleViolationException;
+import com.ledger.ledger_api.repository.AddOnRepository;
+import com.ledger.ledger_api.repository.PerkRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 @Component("BLOOD_MONEY")
 public class BloodMoneyVariantStrategy implements VariantStrategy {
+
+    // 1. Bring in the repositories to check the store prices
+    private final PerkRepository perkRepo;
+    private final AddOnRepository addOnRepo;
+
+    public BloodMoneyVariantStrategy(PerkRepository perkRepo, AddOnRepository addOnRepo) {
+        this.perkRepo = perkRepo;
+        this.addOnRepo = addOnRepo;
+    }
 
     @Override
     public void validateTrialStart(Season season, SeasonRoster killerRoster) {
@@ -35,32 +44,48 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
         Map<String, Object> state = season.getVariantState();
         Integer balance = (Integer) state.getOrDefault("balance", 0);
 
-        boolean hatchEscapeOccurred = false;
-
-        // Loop through survivors to check for permadeath conditions
-        for (TrialSurvivor.SurvivorOutcome outcome : request.survivorOutcomes()) {
-            if (outcome == TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE) {
-                hatchEscapeOccurred = true;
-            }
-        }
+        boolean hatchEscapeOccurred = request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE);
 
         // Apply Permadeath
         if (hatchEscapeOccurred) {
             killerRoster.setStatus(SeasonRoster.RosterStatus.DEAD);
         }
 
-        // TODO: You will plug in your specific math here for calculating income
-        // based on kills, pips, and perk costs. For now, we update a placeholder value.
-        int trialIncome = calculateBloodMoneyIncome(request, trial.getPipProgression());
+        // Calculate Loadout Costs
+        int totalCost = 0;
 
-        state.put("balance", balance + trialIncome);
+        if (request.perkIds() != null && !request.perkIds().isEmpty()) {
+            List<Perk> equippedPerks = perkRepo.findAllById(request.perkIds());
+            totalCost += equippedPerks.stream().mapToInt(Perk::getCost).sum();
+        }
+
+        if (request.addOnIds() != null && !request.addOnIds().isEmpty()) {
+            List<AddOn> equippedAddOns = addOnRepo.findAllById(request.addOnIds());
+            totalCost += equippedAddOns.stream().mapToInt(AddOn::getCost).sum();
+        }
+
+        // Calculate Trial Income and apply net change
+        int trialIncome = calculateBloodMoneyIncome(request, trial.getPipProgression());
+        int newBalance = balance + trialIncome - totalCost;
+
+        state.put("balance", newBalance);
         season.setVariantState(state);
     }
 
     private int calculateBloodMoneyIncome(TrialSubmitRequest request, int pips) {
-        // Placeholder for your specific economic rules
         int income = 0;
-        if (pips > 0) income += 5; // Example logic
+
+        // Example logic: Earn 2 funds per pip
+        if (pips > 0) {
+            income += (pips * 2);
+        }
+
+        // Earn 2 funds per kill/sacrifice
+        long kills = request.survivorOutcomes().stream()
+                .filter(o -> o == TrialSurvivor.SurvivorOutcome.KILLED || o == TrialSurvivor.SurvivorOutcome.SACRIFICED)
+                .count();
+        income += (kills * 2);
+
         return income;
     }
 }

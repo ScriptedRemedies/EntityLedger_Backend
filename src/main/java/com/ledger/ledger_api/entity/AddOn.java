@@ -19,6 +19,9 @@ public class AddOn {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false)
+    private Integer cost = 0;
+
     // Add-ons must belong to a killer, so this is not nullable.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "killer_id", nullable = false)

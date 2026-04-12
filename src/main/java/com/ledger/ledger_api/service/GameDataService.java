@@ -31,13 +31,16 @@ public class GameDataService {
     }
 
     public List<Perk> getAvailablePerksForKiller(Long killerId) {
-        // Returns both the universal perks and the specific adept perks for this killer
+        // 1. If no specific killer is requested, return the entire catalog of 138+ perks
+        if (killerId == null) {
+            return perkRepo.findAll();
+        }
+
+        // 2. If a killer IS specified, return only Universal perks + Their specific Adept perks
         List<Perk> availablePerks = new ArrayList<>();
         availablePerks.addAll(perkRepo.findByKillerIsNull());
+        availablePerks.addAll(perkRepo.findByKillerId(killerId));
 
-        if (killerId != null) {
-            availablePerks.addAll(perkRepo.findByKillerId(killerId));
-        }
         return availablePerks;
     }
 

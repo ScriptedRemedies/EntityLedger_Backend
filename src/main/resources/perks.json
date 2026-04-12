@@ -1,0 +1,182 @@
+[
+  { "name": "Sloppy Butcher", "cost": 3 },
+  { "name": "Spies from the Shadows", "cost": 1 },
+  { "name": "Whispers", "cost": 2 },
+  { "name": "Bitter Murmur", "cost": 2 },
+  { "name": "Deerstalker", "cost": 1 },
+  { "name": "Distressing", "cost": 1 },
+  { "name": "Hex: No One Escapes Death", "cost": 5 },
+  { "name": "Insidious", "cost": 1 },
+  { "name": "Iron Grasp", "cost": 2 },
+  { "name": "Monstrous Shrine", "cost": 1 },
+  { "name": "Unrelenting", "cost": 1 },
+  { "name": "Hex: Thrill of the Hunt", "cost": 2 },
+
+  { "name": "Brutal Strength", "cost": 2, "killerName": "The Trapper" },
+  { "name": "Agitation", "cost": 3, "killerName": "The Trapper" },
+  { "name": "Unnerving Presence", "cost": 1, "killerName": "The Trapper" },
+
+  { "name": "Predator", "cost": 1, "killerName": "The Wraith" },
+  { "name": "Bloodhound", "cost": 1, "killerName": "The Wraith" },
+  { "name": "Shadowborn", "cost": 1, "killerName": "The Wraith" },
+
+  { "name": "Enduring", "cost": 3, "killerName": "The Hillbilly" },
+  { "name": "Lightborn", "cost": 2, "killerName": "The Hillbilly" },
+  { "name": "Tinkerer", "cost": 4, "killerName": "The Hillbilly" },
+
+  { "name": "Stridor", "cost": 1, "killerName": "The Nurse" },
+  { "name": "Thanatophobia", "cost": 3, "killerName": "The Nurse" },
+  { "name": "A Nurse's Calling", "cost": 4, "killerName": "The Nurse" },
+
+  { "name": "Save the Best for Last", "cost": 4, "killerName": "The Shape" },
+  { "name": "Play with Your Food", "cost": 3, "killerName": "The Shape" },
+  { "name": "Dying Light", "cost": 2, "killerName": "The Shape" },
+
+  { "name": "Hex: Ruin", "cost": 4, "killerName": "The Hag" },
+  { "name": "Hex: Devour Hope", "cost": 4, "killerName": "The Hag" },
+  { "name": "Hex: The Third Seal", "cost": 2, "killerName": "The Hag" },
+
+  { "name": "Overwhelming Presence", "cost": 1, "killerName": "The Doctor" },
+  { "name": "Monitor & Abuse", "cost": 3, "killerName": "The Doctor" },
+  { "name": "Overcharge", "cost": 3, "killerName": "The Doctor" },
+
+  { "name": "Beast of Prey", "cost": 1, "killerName": "The Huntress" },
+  { "name": "Territorial Imperative", "cost": 1, "killerName": "The Huntress" },
+  { "name": "Hex: Huntress Lullaby", "cost": 2, "killerName": "The Huntress" },
+
+  { "name": "Knock Out", "cost": 2, "killerName": "The Cannibal" },
+  { "name": "Barbecue & Chilli", "cost": 4, "killerName": "The Cannibal" },
+  { "name": "Franklin's Demise", "cost": 3, "killerName": "The Cannibal" },
+
+  { "name": "Fire Up", "cost": 2, "killerName": "The Nightmare" },
+  { "name": "Remember Me", "cost": 3, "killerName": "The Nightmare" },
+  { "name": "Blood Warden", "cost": 3, "killerName": "The Nightmare" },
+
+  { "name": "Hangman's Trick", "cost": 1, "killerName": "The Pig" },
+  { "name": "Make Your Choice", "cost": 4, "killerName": "The Pig" },
+  { "name": "Surveillance", "cost": 3, "killerName": "The Pig" },
+
+  { "name": "Bamboozle", "cost": 4, "killerName": "The Clown" },
+  { "name": "Coulrophobia", "cost": 2, "killerName": "The Clown" },
+  { "name": "Pop Goes the Weasel", "cost": 5, "killerName": "The Clown" },
+
+  { "name": "Spirit Fury", "cost": 3, "killerName": "The Spirit" },
+  { "name": "Hex: Haunted Ground", "cost": 3, "killerName": "The Spirit" },
+  { "name": "Rancor", "cost": 3, "killerName": "The Spirit" },
+
+  { "name": "Discordance", "cost": 4, "killerName": "The Legion" },
+  { "name": "Mad Grit", "cost": 2, "killerName": "The Legion" },
+  { "name": "Iron Maiden", "cost": 2, "killerName": "The Legion" },
+
+  { "name": "Corrupt Intervention", "cost": 5, "killerName": "The Plague" },
+  { "name": "Infectious Fright", "cost": 4, "killerName": "The Plague" },
+  { "name": "Dark Devotion", "cost": 2, "killerName": "The Plague" },
+
+  { "name": "I'm All Ears", "cost": 3, "killerName": "The Ghost Face" },
+  { "name": "Thrilling Tremors", "cost": 3, "killerName": "The Ghost Face" },
+  { "name": "Furtive Chase", "cost": 2, "killerName": "The Ghost Face" },
+
+  { "name": "Surge", "cost": 4, "killerName": "The Demogorgon" },
+  { "name": "Cruel Limits", "cost": 1, "killerName": "The Demogorgon" },
+  { "name": "Mindbreaker", "cost": 3, "killerName": "The Demogorgon" },
+
+  { "name": "Zanshin Tactics", "cost": 1, "killerName": "The Oni" },
+  { "name": "Blood Echo", "cost": 2, "killerName": "The Oni" },
+  { "name": "Nemesis", "cost": 2, "killerName": "The Oni" },
+
+  { "name": "Gearhead", "cost": 2, "killerName": "The Deathslinger" },
+  { "name": "Dead Man's Switch", "cost": 4, "killerName": "The Deathslinger" },
+  { "name": "Hex: Retribution", "cost": 3, "killerName": "The Deathslinger" },
+
+  { "name": "Forced Penance", "cost": 2, "killerName": "The Executioner" },
+  { "name": "Trail of Torment", "cost": 3, "killerName": "The Executioner" },
+  { "name": "Deathbound", "cost": 1, "killerName": "The Executioner" },
+
+  { "name": "Dragon's Grip", "cost": 2, "killerName": "The Blight" },
+  { "name": "Hex: Blood Favour", "cost": 3, "killerName": "The Blight" },
+  { "name": "Hex: Undying", "cost": 4, "killerName": "The Blight" },
+
+  { "name": "Hoarder", "cost": 1, "killerName": "The Twins" },
+  { "name": "Oppression", "cost": 3, "killerName": "The Twins" },
+  { "name": "Coup de Grace", "cost": 3, "killerName": "The Twins" },
+
+  { "name": "Starstruck", "cost": 4, "killerName": "The Trickster" },
+  { "name": "Hex: Crowd Control", "cost": 2, "killerName": "The Trickster" },
+  { "name": "No Way Out", "cost": 5, "killerName": "The Trickster" },
+
+  { "name": "Lethal Pursuer", "cost": 5, "killerName": "The Nemesis" },
+  { "name": "Hysteria", "cost": 2, "killerName": "The Nemesis" },
+  { "name": "Eruption", "cost": 4, "killerName": "The Nemesis" },
+
+  { "name": "Deadlock", "cost": 4, "killerName": "The Cenobite" },
+  { "name": "Hex: Plaything", "cost": 4, "killerName": "The Cenobite" },
+  { "name": "Scourge Hook: Gift of Pain", "cost": 3, "killerName": "The Cenobite" },
+
+  { "name": "Grim Embrace", "cost": 4, "killerName": "The Artist" },
+  { "name": "Scourge Hook: Pain Resonance", "cost": 5, "killerName": "The Artist" },
+  { "name": "Hex: Pentimento", "cost": 4, "killerName": "The Artist" },
+
+  { "name": "Scourge Hook: Floods of Rage", "cost": 3, "killerName": "The Onryo" },
+  { "name": "Call of Brine", "cost": 3, "killerName": "The Onryo" },
+  { "name": "Merciless Storm", "cost": 3, "killerName": "The Onryo" },
+
+  { "name": "Darkness Revealed", "cost": 3, "killerName": "The Dredge" },
+  { "name": "Dissolution", "cost": 2, "killerName": "The Dredge" },
+  { "name": "Septic Touch", "cost": 1, "killerName": "The Dredge" },
+
+  { "name": "Awakened Awareness", "cost": 2, "killerName": "The Mastermind" },
+  { "name": "Terminus", "cost": 3, "killerName": "The Mastermind" },
+  { "name": "Superior Anatomy", "cost": 3, "killerName": "The Mastermind" },
+
+  { "name": "Nowhere to Hide", "cost": 4, "killerName": "The Knight" },
+  { "name": "Hex: Face the Darkness", "cost": 3, "killerName": "The Knight" },
+  { "name": "Hubris", "cost": 3, "killerName": "The Knight" },
+
+  { "name": "Game Afoot", "cost": 2, "killerName": "The Skull Merchant" },
+  { "name": "THWACK!", "cost": 2, "killerName": "The Skull Merchant" },
+  { "name": "Leverage", "cost": 1, "killerName": "The Skull Merchant" },
+
+  { "name": "Genetic Limits", "cost": 2, "killerName": "The Singularity" },
+  { "name": "Forced Hesitation", "cost": 3, "killerName": "The Singularity" },
+  { "name": "Machine Learning", "cost": 2, "killerName": "The Singularity" },
+
+  { "name": "Rapid Brutality", "cost": 3, "killerName": "The Xenomorph" },
+  { "name": "Alien Instinct", "cost": 2, "killerName": "The Xenomorph" },
+  { "name": "Ultimate Weapon", "cost": 4, "killerName": "The Xenomorph" },
+
+  { "name": "Hex: Two Can Play", "cost": 2, "killerName": "The Good Guy" },
+  { "name": "Friends 'til the End", "cost": 4, "killerName": "The Good Guy" },
+  { "name": "Batteries Included", "cost": 2, "killerName": "The Good Guy" },
+
+  { "name": "Unbound", "cost": 2, "killerName": "The Unknown" },
+  { "name": "Unforeseen", "cost": 3, "killerName": "The Unknown" },
+  { "name": "Undone", "cost": 2, "killerName": "The Unknown" },
+
+  { "name": "Weave Attunement", "cost": 3, "killerName": "The Lich" },
+  { "name": "Languid Touch", "cost": 2, "killerName": "The Lich" },
+  { "name": "Dark Arrogance", "cost": 2, "killerName": "The Lich" },
+
+  { "name": "Dominance", "cost": 3, "killerName": "The Dark Lord" },
+  { "name": "Human Greed", "cost": 2, "killerName": "The Dark Lord" },
+  { "name": "Wretched Fate", "cost": 3, "killerName": "The Dark Lord" },
+
+  { "name": "All-Shaking Thunder", "cost": 3, "killerName": "The Houndmaster" },
+  { "name": "No Quarter", "cost": 2, "killerName": "The Houndmaster" },
+  { "name": "No Holds Barred", "cost": 2, "killerName": "The Houndmaster" },
+
+  { "name": "Springtrap's Agony", "cost": 4, "killerName": "The Attraction" },
+  { "name": "Mechanical Menace", "cost": 3, "killerName": "The Attraction" },
+  { "name": "Hex: Remnant", "cost": 3, "killerName": "The Attraction" },
+
+  { "name": "Hive Mind", "cost": 3, "killerName": "The Swarm" },
+  { "name": "Swarm's Embrace", "cost": 2, "killerName": "The Swarm" },
+  { "name": "Parasitic Infection", "cost": 4, "killerName": "The Swarm" },
+
+  { "name": "Laughing Gas", "cost": 3, "killerName": "The Jester" },
+  { "name": "Punchline", "cost": 2, "killerName": "The Jester" },
+  { "name": "Hex: Spotlight", "cost": 2, "killerName": "The Jester" },
+
+  { "name": "Battlefield Command", "cost": 4, "killerName": "The Warlord" },
+  { "name": "Iron March", "cost": 3, "killerName": "The Warlord" },
+  { "name": "Trench Warfare", "cost": 2, "killerName": "The Warlord" }
+]

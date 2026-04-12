@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PerkRepository extends JpaRepository<Perk, Long> {
@@ -14,4 +15,7 @@ public interface PerkRepository extends JpaRepository<Perk, Long> {
 
     // Finds all universal perks (where killer is null)
     List<Perk> findByKillerIsNull();
+
+    // Prevent duplicates in the DataSeeder by finding perks by name
+    Optional<Perk> findByName(String name);
 }

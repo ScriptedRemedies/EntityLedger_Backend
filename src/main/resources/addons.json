@@ -1,0 +1,10 @@
+[
+  { "name": "Iridescent Stone", "cost": 5, "killerName": "The Trapper" },
+  { "name": "Honing Stone", "cost": 4, "killerName": "The Trapper" },
+
+  { "name": "Coxcomb Clapper", "cost": 5, "killerName": "The Wraith" },
+  { "name": "All Seeing - Spirit", "cost": 4, "killerName": "The Wraith" },
+
+  { "name": "Iridescent Brick", "cost": 5, "killerName": "The Hillbilly" },
+  { "name": "LoPro Chains", "cost": 4, "killerName": "The Hillbilly" }
+]
