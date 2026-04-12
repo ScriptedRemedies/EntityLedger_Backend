@@ -28,7 +28,7 @@ public class SecurityConfig {
                 // 3. Configure endpoint routing
                 .authorizeHttpRequests(auth -> auth
                         // Allow public access to static game data
-                        .requestMatchers("/api/v1/killers/**", "/api/v1/perks/**", "/api/v1/addons/**").permitAll()
+                        .requestMatchers("/api/v1/reference-data/**").permitAll()
 
                         // All other requests (seasons, trials, stats) require a valid token
                         .anyRequest().authenticated()
