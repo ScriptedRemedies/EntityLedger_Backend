@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -23,13 +24,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(GameRuleViolationException.class)
-    public ResponseEntity<ErrorResponse> handleGameRuleViolation(GameRuleViolationException ex) {
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage(),
-                LocalDateTime.now()
-        );
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<Map<String, String>> handleGameRuleViolation(GameRuleViolationException ex) {
+        // This packages our specific error message into a clean 400 Bad Request JSON object
+        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
     }
 
     @ExceptionHandler(ActiveSeasonExistsException.class)
