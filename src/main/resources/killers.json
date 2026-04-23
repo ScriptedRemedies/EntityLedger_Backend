@@ -37,8 +37,8 @@
   { "name": "The Lich", "cost": 4 },
   { "name": "The Dark Lord", "cost": 4 },
   { "name": "The Houndmaster", "cost": 3 },
-  { "name": "The Attraction", "cost": 4 },
-  { "name": "The Swarm", "cost": 3 },
-  { "name": "The Jester", "cost": 2 },
-  { "name": "The Warlord", "cost": 4 }
+  { "name": "The Ghoul", "cost": 4 },
+  { "name": "The Animatronic", "cost": 3 },
+  { "name": "The Krause", "cost": 2 },
+  { "name": "The First", "cost": 4 }
 ]
