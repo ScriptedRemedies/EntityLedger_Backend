@@ -1,0 +1,19 @@
+[
+  {
+    "name": "Standard",
+    "difficultyLevel": "Normal",
+    "iconUrl": "/assets/icons/standard-icon.png",
+    "watermarkUrl": "/assets/icons/standard-watermark.png",
+    "rulesDescription": "The classic gauntlet.",
+    "rules": [
+      {
+        "title": "GRADE REQUIREMENT",
+        "description": "Ash IV to Iridescent I."
+      },
+      {
+        "title": "TRIAL WIN",
+        "description": "A trial is considered won if at least 3 survivors are sacrificed and the last survivor does not escape through a gate."
+      }
+    ]
+  }
+]

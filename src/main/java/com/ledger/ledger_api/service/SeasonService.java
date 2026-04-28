@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -102,6 +103,47 @@ public class SeasonService {
                 season.getId(), season.getVariantType(), season.getStatus(),
                 season.getStartDate(), season.getEndDate(), season.getCurrentGrade(),
                 season.getCurrentPips(), season.getVariantState(), statsDto, rosterDtos
+        );
+    }
+
+    // --- VARIANT HISTORY METHODS ---
+
+    @Transactional(readOnly = true)
+    public List<Season> getSeasonsByVariant(UUID playerId, String variantTypeString) {
+        // Convert the URL string (e.g., "STANDARD") into your Java Enum
+        Season.VariantType type = Season.VariantType.valueOf(variantTypeString.toUpperCase());
+
+        // Fetch all seasons for this specific variant, newest first
+        return seasonRepo.findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(playerId, type);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getVariantStats(UUID playerId, String variantTypeString) {
+        Season.VariantType type = Season.VariantType.valueOf(variantTypeString.toUpperCase());
+        List<Season> variantSeasons = seasonRepo.findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(playerId, type);
+
+        int totalTrials = 0;
+        double totalKillRateWeight = 0.0;
+
+        // Loop through all seasons of this variant to aggregate the stats
+        for (Season season : variantSeasons) {
+            SeasonStats stats = statsRepo.findById(season.getId()).orElse(null);
+
+            if (stats != null && stats.getMatchesPlayed() > 0) {
+                totalTrials += stats.getMatchesPlayed();
+                // Multiply the kill rate by the matches played to get a weighted calculation
+                totalKillRateWeight += (stats.getKillRate() * stats.getMatchesPlayed());
+            }
+        }
+
+        // Calculate the true overall kill rate across all seasons
+        double overallKillRate = totalTrials > 0 ? (totalKillRateWeight / totalTrials) : 0.0;
+
+        // Return a Map so Jackson automatically converts it into a JSON object
+        // Notice we use "trialsPlayed" as the key to perfectly match your React frontend!
+        return Map.of(
+                "trialsPlayed", totalTrials,
+                "killRate", Math.round(overallKillRate * 10.0) / 10.0 // Rounds to 1 decimal place
         );
     }
 }

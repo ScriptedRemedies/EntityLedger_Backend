@@ -1,0 +1,22 @@
+[
+  {
+    "variantName": "Standard",
+    "playerEmail": "sam@test.com",
+    "status": "COMPLETED",
+    "dateRange": "Sep - Oct 2025",
+    "dateCompleted": "Oct 13, 2025",
+    "gradeName": "BRONZE III",
+    "nextGradeName": "BRONZE II",
+    "badgeUrl": "/assets/badges/bronze-3.png"
+  },
+  {
+    "variantName": "Standard",
+    "playerEmail": "sam@test.com",
+    "status": "COMPLETED",
+    "dateRange": "Nov - Dec 2025",
+    "dateCompleted": "Dec 13, 2025",
+    "gradeName": "SILVER I",
+    "nextGradeName": "GOLD IV",
+    "badgeUrl": "/assets/badges/silver-1.png"
+  }
+]

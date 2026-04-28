@@ -1,5 +1,6 @@
 package com.ledger.ledger_api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,7 @@ public class Trial {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "season_id", nullable = false)
+    @JsonIgnore
     private Season season;
 
     @ManyToOne(fetch = FetchType.LAZY)

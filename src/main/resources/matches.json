@@ -1,0 +1,30 @@
+[
+  {
+    "seasonId": 1,
+    "trialNumber": 1,
+    "killCount": 4,
+    "pipChange": 2,
+    "gradeBadgeUrl": "/assets/badges/ash-4.png",
+    "survivorResults": ["Sacrificed", "Sacrificed", "Sacrificed", "Sacrificed"],
+    "killer": {
+      "name": "The Trapper",
+      "portraitUrl": "/assets/killers/trapper.png"
+    },
+    "perks": [
+      { "name": "Corrupt Intervention", "iconUrl": "/assets/perks/corrupt.png" },
+      { "name": "Pop Goes the Weasel", "iconUrl": "/assets/perks/pop.png" },
+      { "name": "No Way Out", "iconUrl": "/assets/perks/nwo.png" },
+      { "name": "Agitation", "iconUrl": "/assets/perks/agitation.png" }
+    ],
+    "addons": [
+      { "name": "Tar Bottle", "iconUrl": "/assets/addons/tar_bottle.png" },
+      { "name": "Fastening Tools", "iconUrl": "/assets/addons/fastening_tools.png" }
+    ],
+    "emblems": [
+      { "name": "GateKeeper", "iconUrl": "/assets/emblems/iri-gatekeeper.png" },
+      { "name": "Devout", "iconUrl": "/assets/emblems/iri-devout.png" },
+      { "name": "Malicious", "iconUrl": "/assets/emblems/iri-malicious.png" },
+      { "name": "Chaser", "iconUrl": "/assets/emblems/iri-chaser.png" }
+    ]
+  }
+]

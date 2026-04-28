@@ -15,7 +15,7 @@ public interface SeasonRepository extends JpaRepository<Season, UUID> {
     Optional<Season> findByPlayerIdAndStatus(UUID playerId, Season.SeasonStatus status);
 
     // For fetching their entire history
-    List<Season> findAllByPlayerIdOrderByStartDateDesc(UUID playerId);
+    List<Season> findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(UUID playerId, Season.VariantType variantType);
 
     // For the Scheduled Cron Job: Finds all active seasons to check if time ran out
     List<Season> findAllByStatus(Season.SeasonStatus status);

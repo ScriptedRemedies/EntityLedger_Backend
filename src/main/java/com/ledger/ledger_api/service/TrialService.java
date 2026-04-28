@@ -93,4 +93,10 @@ public class TrialService {
                 request.survivorOutcomes().stream().map(Enum::name).collect(Collectors.toList())
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<Trial> getTrialsBySeason(UUID seasonId) {
+        // Fetches the list from the database
+        return trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(seasonId);
+    }
 }
