@@ -7,6 +7,8 @@ import com.ledger.ledger_api.repository.PlayerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class PlayerService {
 
@@ -26,5 +28,9 @@ public class PlayerService {
                     newPlayer.setUsername(username);
                     return playerRepo.save(newPlayer);
                 });
+    }
+
+    public List<Player> getAllPlayers() {
+        return playerRepo.findAll();
     }
 }

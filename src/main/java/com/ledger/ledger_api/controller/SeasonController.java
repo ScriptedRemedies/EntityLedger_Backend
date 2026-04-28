@@ -12,7 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,20 +33,20 @@ public class SeasonController {
     }
 
     @PostMapping
-    public ResponseEntity<Season> startSeason(@Valid @RequestBody SeasonCreateRequest request, @AuthenticationPrincipal Jwt jwt) {
-        Player player = playerService.getOrCreatePlayer(jwt.getSubject(), jwt.getClaimAsString("email"), jwt.getClaimAsString("name"));
+    public ResponseEntity<Season> startSeason(@Valid @RequestBody SeasonCreateRequest request, @AuthenticationPrincipal OAuth2User principal) {
+        Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
         Season newSeason = seasonService.startNewSeason(player.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(newSeason);
     }
 
     @GetMapping("/active")
-    public ResponseEntity<SeasonDetailsResponse> getActiveSeason(@AuthenticationPrincipal Jwt jwt) {
-        Player player = playerService.getOrCreatePlayer(jwt.getSubject(), jwt.getClaimAsString("email"), jwt.getClaimAsString("name"));
+    public ResponseEntity<SeasonDetailsResponse> getActiveSeason(@AuthenticationPrincipal OAuth2User principal) {
+        Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
         return ResponseEntity.ok(seasonService.getActiveSeasonDetails(player.getId()));
     }
 
     @GetMapping("/{seasonId}/trials")
-    public ResponseEntity<List<Trial>> getSeasonTrials(@PathVariable UUID seasonId, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<Trial>> getSeasonTrials(@PathVariable UUID seasonId, @AuthenticationPrincipal OAuth2User principal) {
         List<Trial> trialHistory = trialService.getTrialsBySeason(seasonId);
         return ResponseEntity.ok(trialHistory);
     }

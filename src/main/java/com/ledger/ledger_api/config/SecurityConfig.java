@@ -17,6 +17,9 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @org.springframework.beans.factory.annotation.Value("${frontend.url}")
+    private String frontendUrl;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -26,9 +29,6 @@ public class SecurityConfig {
                 // 2. Disable CSRF (Safe to do because we are using stateless JWTs, not browser session cookies)
                 .csrf(csrf -> csrf.disable())
 
-                // 3. Make our REST API strictly stateless (Best practice for performance)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 // 4. Configure our Authorization Rules
                 .authorizeHttpRequests(auth -> auth
                         // The reference data (Killers, Perks, Addons) is completely public
@@ -37,8 +37,16 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // 5. Tell Spring Security to act as an OAuth2 Resource Server and look for a JWT
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                // 5. Enable OAuth2 Login and session management
+                .oauth2Login(oauth2 -> oauth2
+                        // Dynamically redirect to the frontend dashboard on success
+                        .defaultSuccessUrl(frontendUrl + "/dashboard", true)
+                )
+                .logout(logout -> logout
+                        .logoutSuccessUrl(frontendUrl + "/")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                )
 
                 .build();
     }
@@ -48,7 +56,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // Explicitly whitelist your Vite frontend port
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of(frontendUrl));
 
         // Allow standard REST methods + OPTIONS (OPTIONS is required for browsers to do pre-flight checks)
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));

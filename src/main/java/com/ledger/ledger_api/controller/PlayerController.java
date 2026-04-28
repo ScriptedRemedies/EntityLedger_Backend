@@ -6,10 +6,13 @@ import com.ledger.ledger_api.entity.Player;
 import com.ledger.ledger_api.service.PlayerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/players")
@@ -22,13 +25,19 @@ public class PlayerController {
     }
 
     @PostMapping("/sync")
-    public ResponseEntity<Player> syncUser(@AuthenticationPrincipal Jwt jwt) {
-        // Extracts data from the secure token to create/fetch the user profile
+    public ResponseEntity<Player> syncUser(@AuthenticationPrincipal OAuth2User principal) {
+
+        // Extract from the OAuth2User attributes instead of claims
         Player player = playerService.getOrCreatePlayer(
-                jwt.getSubject(),
-                jwt.getClaimAsString("email"),
-                jwt.getClaimAsString("name")
+                principal.getName(), // Subject ID
+                principal.getAttribute("email"),
+                principal.getAttribute("name")
         );
         return ResponseEntity.ok(player);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Player>> getAllPlayers() {
+        return ResponseEntity.ok(playerService.getAllPlayers());
     }
 }

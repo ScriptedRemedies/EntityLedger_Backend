@@ -11,7 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -28,8 +28,8 @@ public class TrialController {
 
     @PostMapping
     public ResponseEntity<TrialSummaryResponse> logTrial(@Valid @RequestBody TrialSubmitRequest request,
-                                                         @AuthenticationPrincipal Jwt jwt) {
-        Player player = playerService.getOrCreatePlayer(jwt.getSubject(), jwt.getClaimAsString("email"), jwt.getClaimAsString("name"));
+                                                         OAuth2User principal) {
+        Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
         TrialSummaryResponse response = trialService.submitTrial(request, player.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
