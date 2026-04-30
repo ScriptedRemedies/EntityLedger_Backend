@@ -25,5 +25,12 @@ public record TrialSubmitRequest(
         // There must ALWAYS be exactly 4 survivor outcomes logged
         @NotNull(message = "Survivor outcomes are required")
         @Size(min = 4, max = 4, message = "Exactly 4 survivor outcomes must be provided")
-        List<TrialSurvivor.SurvivorOutcome> survivorOutcomes
+        List<TrialSurvivor.SurvivorOutcome> survivorOutcomes,
+
+        int kills,
+        int gensLeft,
+        boolean closedHatch,
+        boolean genBeforeHook,
+        boolean lastGenCompleted,
+        boolean gateOpened
 ) {}

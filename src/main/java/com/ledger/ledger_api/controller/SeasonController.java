@@ -50,4 +50,23 @@ public class SeasonController {
         List<Trial> trialHistory = trialService.getTrialsBySeason(seasonId);
         return ResponseEntity.ok(trialHistory);
     }
+
+    @PutMapping("/{seasonId}/sell/{killerId}")
+    public ResponseEntity<Season> sellKiller(
+            @PathVariable UUID seasonId,
+            @PathVariable UUID killerId,
+            @AuthenticationPrincipal OAuth2User principal) {
+
+        // Verify the user making the request
+        Player player = playerService.getOrCreatePlayer(
+                principal.getName(),
+                principal.getAttribute("email"),
+                principal.getAttribute("name")
+        );
+
+        // Execute the sale
+        Season updatedSeason = seasonService.sellKiller(player.getId(), seasonId, killerId);
+
+        return ResponseEntity.ok(updatedSeason);
+    }
 }

@@ -8,6 +8,7 @@ import com.ledger.ledger_api.entity.*;
 import com.ledger.ledger_api.exception.ActiveSeasonExistsException;
 import com.ledger.ledger_api.exception.ResourceNotFoundException;
 import com.ledger.ledger_api.repository.*;
+import com.ledger.ledger_api.strategy.VariantStrategy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +27,17 @@ public class SeasonService {
     private final SeasonRosterRepository rosterRepo;
     private final KillerRepository killerRepo;
 
+    private final Map<String, VariantStrategy> strategies;
+
     public SeasonService(SeasonRepository seasonRepo, PlayerRepository playerRepo,
                          SeasonStatsRepository statsRepo, SeasonRosterRepository rosterRepo,
-                         KillerRepository killerRepo) {
+                         KillerRepository killerRepo, Map<String, VariantStrategy> strategies) {
         this.seasonRepo = seasonRepo;
         this.playerRepo = playerRepo;
         this.statsRepo = statsRepo;
         this.rosterRepo = rosterRepo;
         this.killerRepo = killerRepo;
+        this.strategies = strategies;
     }
 
     @Transactional
@@ -46,6 +50,12 @@ public class SeasonService {
             throw new ActiveSeasonExistsException("You must finish or fail your current season before starting a new one.");
         }
 
+        // Fetch the specific strategy based on the requested variant
+        VariantStrategy strategy = strategies.get(request.variantType().name());
+        if (strategy == null) {
+            throw new IllegalStateException("Strategy not implemented for " + request.variantType());
+        }
+
         // 2. Create the base Season
         Season season = new Season();
         season.setPlayer(player);
@@ -53,25 +63,43 @@ public class SeasonService {
         season.setStatus(Season.SeasonStatus.ACTIVE);
         season.setStartDate(LocalDateTime.now());
         season.setCurrentGrade(request.startingGrade());
-        season.setVariantState(request.variantSettings());
         season.setInheritedSeasonId(request.inheritedSeasonId());
 
-        // Save to generate the UUID
+        // Initialize a blank state map before handing it to the strategy
+        season.setVariantState(new java.util.HashMap<>());
+
+        // Let the strategy populate the state based on the variant settings
+        strategy.initializeSeasonState(season, request.variantSettings());
+
         season = seasonRepo.save(season);
 
-        // 3. Initialize blank Stats for this season
         SeasonStats stats = new SeasonStats();
         stats.setSeason(season);
         statsRepo.save(stats);
 
-        // 4. Generate the starting roster (all 36+ killers)
-        List<Killer> allKillers = killerRepo.findAll();
-        for (Killer killer : allKillers) {
-            SeasonRoster rosterEntry = new SeasonRoster();
-            rosterEntry.setSeason(season);
-            rosterEntry.setKiller(killer);
-            rosterEntry.setStatus(SeasonRoster.RosterStatus.AVAILABLE);
-            rosterRepo.save(rosterEntry);
+        // 4. Generate or Inherit the starting roster
+        if (season.getInheritedSeasonId() != null) {
+            // AFTERBURN: Copy the exact roster statuses from the previous season
+            Season inheritedSeason = seasonRepo.findById(season.getInheritedSeasonId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Inherited season not found"));
+
+            for (SeasonRoster oldRoster : inheritedSeason.getRosters()) {
+                SeasonRoster rosterEntry = new SeasonRoster();
+                rosterEntry.setSeason(season);
+                rosterEntry.setKiller(oldRoster.getKiller());
+                rosterEntry.setStatus(oldRoster.getStatus()); // Copies DEAD, SOLD, or AVAILABLE
+                rosterRepo.save(rosterEntry);
+            }
+        } else {
+            // STANDARD/BLOOD MONEY/ETC: Fresh roster of all killers
+            List<Killer> allKillers = killerRepo.findAll();
+            for (Killer killer : allKillers) {
+                SeasonRoster rosterEntry = new SeasonRoster();
+                rosterEntry.setSeason(season);
+                rosterEntry.setKiller(killer);
+                rosterEntry.setStatus(SeasonRoster.RosterStatus.AVAILABLE);
+                rosterRepo.save(rosterEntry);
+            }
         }
 
         return season;
@@ -145,5 +173,69 @@ public class SeasonService {
                 "trialsPlayed", totalTrials,
                 "killRate", Math.round(overallKillRate * 10.0) / 10.0 // Rounds to 1 decimal place
         );
+    }
+
+    // Sell Killer logic for Blood Money & Afterburn
+    @Transactional
+    public Season sellKiller(UUID playerId, UUID seasonId, UUID killerId) {
+        // 1. Fetch and validate season ownership
+        Season season = seasonRepo.findById(seasonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
+
+        if (!season.getPlayer().getId().equals(playerId)) {
+            throw new IllegalStateException("You do not have permission to modify this season.");
+        }
+
+        // 2. Ensure this is actually a Blood Money season
+        if (season.getVariantType() != Season.VariantType.BLOOD_MONEY) {
+            throw new IllegalStateException("You can only sell killers in the Blood Money variant.");
+        }
+
+        // 3. Find the specific killer in this season's roster
+        SeasonRoster rosterEntry = season.getRosters().stream()
+                .filter(r -> r.getKiller().getId().equals(killerId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Killer not found in this season's roster."));
+
+        // 4. Validate the killer can be sold
+        if (rosterEntry.getStatus() == SeasonRoster.RosterStatus.SOLD) {
+            throw new IllegalStateException("This killer has already been sold.");
+        }
+        if (rosterEntry.getStatus() == SeasonRoster.RosterStatus.DEAD) {
+            throw new IllegalStateException("You cannot sell a dead killer.");
+        }
+
+        // 5. Update the financial state
+        Map<String, Object> state = season.getVariantState();
+        int currentBalance = (int) state.getOrDefault("balance", 0);
+        int sellPrice = rosterEntry.getKiller().getCost();
+
+        state.put("balance", currentBalance + sellPrice);
+        season.setVariantState(state);
+
+        // 6. Mark as SOLD
+        rosterEntry.setStatus(SeasonRoster.RosterStatus.SOLD);
+
+        // 7. Save the changes
+        rosterRepo.save(rosterEntry);
+        return seasonRepo.save(season);
+    }
+
+    @Transactional
+    public Season completeSeason(UUID playerId, UUID seasonId) {
+        // 1. Find the season
+        Season season = seasonRepo.findById(seasonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
+
+        // 2. Verify the player owns this season so they can't end someone else's game
+        if (!season.getPlayer().getId().equals(playerId)) {
+            throw new IllegalStateException("You do not have permission to modify this season.");
+        }
+
+        // 3. Flip the status
+        season.setStatus(Season.SeasonStatus.COMPLETED);
+
+        // 4. Save and return
+        return seasonRepo.save(season);
     }
 }

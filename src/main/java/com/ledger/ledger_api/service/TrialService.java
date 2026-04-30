@@ -73,6 +73,11 @@ public class TrialService {
         // 6. Apply rules and consequences (killing characters, deducting funds, etc.)
         strategy.applyTrialResults(season, killerRoster, trial, request);
 
+        // Check if the season is now over based on the specific variant's rules
+        if (strategy.isSeasonOver(season)) {
+            season.setStatus(Season.SeasonStatus.COMPLETED);
+        }
+
         // 7. Save everything to the database
         // Because of @Transactional, if anything fails, none of this saves, preventing corrupted data.
         trialRepo.save(trial);
