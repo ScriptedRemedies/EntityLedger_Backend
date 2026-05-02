@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -49,6 +50,35 @@ public class SeasonController {
     public ResponseEntity<List<Trial>> getSeasonTrials(@PathVariable UUID seasonId, @AuthenticationPrincipal OAuth2User principal) {
         List<Trial> trialHistory = trialService.getTrialsBySeason(seasonId);
         return ResponseEntity.ok(trialHistory);
+    }
+
+    @GetMapping("/variant/{variantType}")
+    public ResponseEntity<List<Season>> getSeasonsByVariant(
+            @PathVariable String variantType,
+            @AuthenticationPrincipal OAuth2User principal) {
+
+        // 1. Get the securely authenticated player
+        Player player = playerService.getOrCreatePlayer(
+                principal.getName(),
+                principal.getAttribute("email"),
+                principal.getAttribute("name")
+        );
+
+        // 2. Call the exact service method we already built
+        List<Season> seasons = seasonService.getSeasonsByVariant(player.getId(), variantType);
+
+        return ResponseEntity.ok(seasons);
+    }
+
+    @GetMapping("/variant/{variantType}/stats")
+    public ResponseEntity<Map<String, Object>> getVariantStats(
+            @PathVariable String variantType,
+            @AuthenticationPrincipal OAuth2User principal) {
+
+        Player player = playerService.getOrCreatePlayer(
+                principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
+
+        return ResponseEntity.ok(seasonService.getVariantStats(player.getId(), variantType));
     }
 
     @PutMapping("/{seasonId}/sell/{killerId}")
