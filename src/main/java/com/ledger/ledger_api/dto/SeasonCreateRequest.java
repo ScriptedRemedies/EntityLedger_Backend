@@ -5,6 +5,8 @@ package com.ledger.ledger_api.dto;
 import com.ledger.ledger_api.entity.GradeRule;
 import com.ledger.ledger_api.entity.Season;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,5 +21,7 @@ public record SeasonCreateRequest(
         UUID inheritedSeasonId,
 
         // This catches all the unique variant toggles (e.g., "consecutiveMatches": true, "startingFunds": 20)
-        Map<String, Object> variantSettings
+        Map<String, Object> variantSettings,
+
+        List<Long> unlockedKillerIds
 ) {}

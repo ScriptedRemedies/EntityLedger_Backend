@@ -84,7 +84,7 @@ public class SeasonController {
     @PutMapping("/{seasonId}/sell/{killerId}")
     public ResponseEntity<Season> sellKiller(
             @PathVariable UUID seasonId,
-            @PathVariable UUID killerId,
+            @PathVariable Long killerId,
             @AuthenticationPrincipal OAuth2User principal) {
 
         // Verify the user making the request

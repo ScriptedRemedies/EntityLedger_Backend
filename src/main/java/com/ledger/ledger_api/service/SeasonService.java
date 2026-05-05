@@ -1,7 +1,5 @@
 package com.ledger.ledger_api.service;
 
-// PURPOSE: Handles starting, fetching, and failing seasons
-
 import com.ledger.ledger_api.dto.SeasonCreateRequest;
 import com.ledger.ledger_api.dto.SeasonDetailsResponse;
 import com.ledger.ledger_api.entity.*;
@@ -68,9 +66,6 @@ public class SeasonService {
         // Initialize a blank state map before handing it to the strategy
         season.setVariantState(new java.util.HashMap<>());
 
-        // Let the strategy populate the state based on the variant settings
-        strategy.initializeSeasonState(season, request.variantSettings());
-
         season = seasonRepo.save(season);
 
         SeasonStats stats = new SeasonStats();
@@ -92,7 +87,11 @@ public class SeasonService {
             }
         } else {
             // STANDARD/BLOOD MONEY/ETC: Fresh roster of all killers
-            List<Killer> allKillers = killerRepo.findAll();
+            if (request.unlockedKillerIds() == null || request.unlockedKillerIds().isEmpty()) {
+                throw new IllegalStateException("You must select at least one killer to start a trial.");
+            }
+
+            List<Killer> allKillers = killerRepo.findAllById(request.unlockedKillerIds());
             for (Killer killer : allKillers) {
                 SeasonRoster rosterEntry = new SeasonRoster();
                 rosterEntry.setSeason(season);
@@ -177,7 +176,7 @@ public class SeasonService {
 
     // Sell Killer logic for Blood Money & Afterburn
     @Transactional
-    public Season sellKiller(UUID playerId, UUID seasonId, UUID killerId) {
+    public Season sellKiller(UUID playerId, UUID seasonId, Long killerId) {
         // 1. Fetch and validate season ownership
         Season season = seasonRepo.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
