@@ -25,7 +25,11 @@ public record SeasonDetailsResponse(
         StatsDto stats,
 
         // The list of all 36+ killers and their current status for this season
-        List<RosterItemDto> roster
+        List<RosterItemDto> roster,
+
+        String characterName,
+        String characterImageUrl,
+        Integer daysLeft
 ) {
     // Nested records to keep the payload structured
     public record StatsDto(

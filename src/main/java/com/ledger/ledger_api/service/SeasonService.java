@@ -10,7 +10,9 @@ import com.ledger.ledger_api.strategy.VariantStrategy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,18 +26,21 @@ public class SeasonService {
     private final SeasonStatsRepository statsRepo;
     private final SeasonRosterRepository rosterRepo;
     private final KillerRepository killerRepo;
+    private final TrialRepository trialRepo;
 
     private final Map<String, VariantStrategy> strategies;
 
     public SeasonService(SeasonRepository seasonRepo, PlayerRepository playerRepo,
                          SeasonStatsRepository statsRepo, SeasonRosterRepository rosterRepo,
-                         KillerRepository killerRepo, Map<String, VariantStrategy> strategies) {
+                         KillerRepository killerRepo, Map<String, VariantStrategy> strategies,
+                         TrialRepository trialRepo) {
         this.seasonRepo = seasonRepo;
         this.playerRepo = playerRepo;
         this.statsRepo = statsRepo;
         this.rosterRepo = rosterRepo;
         this.killerRepo = killerRepo;
         this.strategies = strategies;
+        this.trialRepo = trialRepo;
     }
 
     @Transactional
@@ -112,7 +117,6 @@ public class SeasonService {
         SeasonStats stats = statsRepo.findById(season.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Stats not found for season."));
 
-        // Map the database entities to the DTO we defined earlier
         SeasonDetailsResponse.StatsDto statsDto = new SeasonDetailsResponse.StatsDto(
                 stats.getMatchesPlayed(), stats.getKillRate(), stats.getFourKRate(),
                 stats.getRosterSurvivalRate(), stats.getHatchEscapeRate(),
@@ -126,10 +130,45 @@ public class SeasonService {
                         r.getStatus().name(), r.getKiller().getCost()))
                 .collect(Collectors.toList());
 
+        // --- NEW LOGIC: FIND MOST RECENT KILLER ---
+        // Fetch all trials for this season
+        List<Trial> trials = trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(season.getId());
+        Killer displayKiller = null;
+
+        if (trials != null && !trials.isEmpty()) {
+            // Grab the killer from the very last trial played
+            displayKiller = trials.get(trials.size() - 1).getKiller();
+        } else {
+            // Fallback: Find the first available killer in the roster
+            displayKiller = rosterRepo.findBySeasonId(season.getId()).stream()
+                    .filter(r -> r.getStatus() == SeasonRoster.RosterStatus.AVAILABLE)
+                    .map(SeasonRoster::getKiller)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // Construct the strings directly for the frontend
+        String characterName = displayKiller != null ? displayKiller.getName() : "The Entity";
+        String characterImageUrl = displayKiller != null ?
+                "/assets/Killer Portraits/" + displayKiller.getName() + ".png" :
+                "/assets/placeholder-killer.png";
+
+        // --- NEW LOGIC: DBD RANK RESET COUNTDOWN ---
+        LocalDate today = LocalDate.now();
+        LocalDate resetDate = today.withDayOfMonth(13); // DbD resets on the 13th
+
+        // If today is the 13th or later, the next reset is next month
+        if (today.isAfter(resetDate) || today.isEqual(resetDate)) {
+            resetDate = resetDate.plusMonths(1);
+        }
+        Integer daysLeft = (int) ChronoUnit.DAYS.between(today, resetDate);
+
+        // Return the fully expanded payload
         return new SeasonDetailsResponse(
                 season.getId(), season.getVariantType(), season.getStatus(),
                 season.getStartDate(), season.getEndDate(), season.getCurrentGrade(),
-                season.getCurrentPips(), season.getVariantState(), statsDto, rosterDtos
+                season.getCurrentPips(), season.getVariantState(), statsDto, rosterDtos,
+                characterName, characterImageUrl, daysLeft
         );
     }
 
