@@ -15,4 +15,6 @@ public interface AddOnRepository extends JpaRepository<AddOn, Long> {
 
     // Prevent duplicates in the DataSeeder by finding perks by name
     Optional<AddOn> findByName(String name);
+
+    Optional<AddOn> findByCode(String code);
 }

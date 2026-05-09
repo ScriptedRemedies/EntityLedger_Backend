@@ -44,14 +44,32 @@ public class DataSeeder implements CommandLineRunner {
 
         try (InputStream inputStream = resource.getInputStream()) {
             List<KillerDTO> killers = objectMapper.readValue(inputStream, new TypeReference<>() {});
+            List<Killer> allExisting = killerRepo.findAll();
 
             for (KillerDTO dto : killers) {
-                Killer killer = killerRepo.findByName(dto.name()).orElse(new Killer());
+                // SMART LOOKUP: Try Code first. If not found, try Name. If neither, create new.
+                Killer killer = killerRepo.findByCode(dto.code())
+                        .orElseGet(() -> killerRepo.findByName(dto.name())
+                                .orElse(new Killer()));
+
+                killer.setCode(dto.code());
                 killer.setName(dto.name());
                 killer.setCost(dto.cost());
+                killer.setIsActive(true);
+
                 killerRepo.save(killer);
+
+                // Remove this killer from the "leftovers" list
+                allExisting.removeIf(k -> k.getId() != null && k.getId().equals(killer.getId()));
             }
-            System.out.println("Killers synchronized successfully from JSON.");
+
+            // Deactivate any killers no longer in the JSON
+            for (Killer leftover : allExisting) {
+                leftover.setIsActive(false);
+                killerRepo.save(leftover);
+            }
+
+            System.out.println("Killers synchronized safely from JSON.");
         } catch (Exception e) {
             System.err.println("Failed to seed killers: " + e.getMessage());
         }
@@ -63,11 +81,17 @@ public class DataSeeder implements CommandLineRunner {
 
         try (InputStream inputStream = resource.getInputStream()) {
             List<PerkDTO> perks = objectMapper.readValue(inputStream, new TypeReference<>() {});
+            List<Perk> allExisting = perkRepo.findAll();
 
             for (PerkDTO dto : perks) {
-                Perk perk = perkRepo.findByName(dto.name()).orElse(new Perk());
+                Perk perk = perkRepo.findByCode(dto.code())
+                        .orElseGet(() -> perkRepo.findByName(dto.name())
+                                .orElse(new Perk()));
+
+                perk.setCode(dto.code());
                 perk.setName(dto.name());
                 perk.setCost(dto.cost());
+                perk.setIsActive(true);
 
                 if (dto.killerName() != null) {
                     killerRepo.findByName(dto.killerName()).ifPresent(perk::setKiller);
@@ -76,8 +100,15 @@ public class DataSeeder implements CommandLineRunner {
                 }
 
                 perkRepo.save(perk);
+                allExisting.removeIf(p -> p.getId() != null && p.getId().equals(perk.getId()));
             }
-            System.out.println("Perks synchronized successfully from JSON.");
+
+            for (Perk leftover : allExisting) {
+                leftover.setIsActive(false);
+                perkRepo.save(leftover);
+            }
+
+            System.out.println("Perks synchronized safely from JSON.");
         } catch (Exception e) {
             System.err.println("Failed to seed perks: " + e.getMessage());
         }
@@ -89,28 +120,38 @@ public class DataSeeder implements CommandLineRunner {
 
         try (InputStream inputStream = resource.getInputStream()) {
             List<AddOnDTO> addOns = objectMapper.readValue(inputStream, new TypeReference<>() {});
+            List<AddOn> allExisting = addOnRepo.findAll();
 
             for (AddOnDTO dto : addOns) {
-                AddOn addOn = addOnRepo.findByName(dto.name()).orElse(new AddOn());
+                AddOn addOn = addOnRepo.findByCode(dto.code())
+                        .orElseGet(() -> addOnRepo.findByName(dto.name())
+                                .orElse(new AddOn()));
+
+                addOn.setCode(dto.code());
                 addOn.setName(dto.name());
-                // Note: If your AddOn entity does not have a setCost method yet, you may need to add it
-                // to the AddOn.java file to support the Blood Money economy!
                 addOn.setCost(dto.cost());
+                addOn.setIsActive(true);
 
                 if (dto.killerName() != null) {
                     killerRepo.findByName(dto.killerName()).ifPresent(addOn::setKiller);
                 }
 
                 addOnRepo.save(addOn);
+                allExisting.removeIf(a -> a.getId() != null && a.getId().equals(addOn.getId()));
             }
-            System.out.println("Add-ons synchronized successfully from JSON.");
+
+            for (AddOn leftover : allExisting) {
+                leftover.setIsActive(false);
+                addOnRepo.save(leftover);
+            }
+
+            System.out.println("Add-ons synchronized safely from JSON.");
         } catch (Exception e) {
             System.err.println("Failed to seed add-ons: " + e.getMessage());
         }
     }
 
-    // Internal DTOs that act as a strict blueprint for our JSON files
-    private record KillerDTO(String name, Integer cost) {}
-    private record PerkDTO(String name, Integer cost, String killerName) {}
-    private record AddOnDTO(String name, Integer cost, String killerName) {}
+    private record KillerDTO(String code, String name, Integer cost) {}
+    private record PerkDTO(String code, String name, Integer cost, String killerName) {}
+    private record AddOnDTO(String code, String name, Integer cost, String killerName) {}
 }

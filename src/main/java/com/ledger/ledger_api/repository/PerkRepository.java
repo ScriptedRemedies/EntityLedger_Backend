@@ -18,4 +18,6 @@ public interface PerkRepository extends JpaRepository<Perk, Long> {
 
     // Prevent duplicates in the DataSeeder by finding perks by name
     Optional<Perk> findByName(String name);
+
+    Optional<Perk> findByCode(String code);
 }

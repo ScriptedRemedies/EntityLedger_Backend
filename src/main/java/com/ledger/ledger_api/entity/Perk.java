@@ -22,6 +22,12 @@ public class Perk {
     @Column(nullable = false)
     private Integer cost;
 
+    @Column(unique = true, nullable = false)
+    private String code;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
     // The foreign key linking back to the Killer.
     // Left nullable because universal perks do not belong to a specific killer.
     @ManyToOne(fetch = FetchType.LAZY)

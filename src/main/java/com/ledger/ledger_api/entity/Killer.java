@@ -21,4 +21,10 @@ public class Killer {
 
     @Column(nullable = false)
     private Integer cost;
+
+    @Column(unique = true, nullable = false)
+    private String code;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
 }

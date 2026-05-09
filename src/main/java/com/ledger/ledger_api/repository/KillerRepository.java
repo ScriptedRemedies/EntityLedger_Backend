@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface KillerRepository extends JpaRepository<Killer, Long> {
     Optional<Killer> findByName(String name);
+    Optional<Killer> findByCode(String code);
 }
