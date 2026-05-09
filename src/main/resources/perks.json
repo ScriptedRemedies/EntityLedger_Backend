@@ -18,7 +18,7 @@
 
   { "code": "predator" , "name": "Predator", "cost": 1, "killerName": "The Wraith" },
   { "code": "bloodhound" , "name": "Bloodhound", "cost": 1, "killerName": "The Wraith" },
-  { "code": "shadownborn" , "name": "Shadowborn", "cost": 1, "killerName": "The Wraith" },
+  { "code": "shadowborn" , "name": "Shadowborn", "cost": 1, "killerName": "The Wraith" },
 
   { "code": "enduring" , "name": "Enduring", "cost": 3, "killerName": "The Hillbilly" },
   { "code": "lightborn" , "name": "Lightborn", "cost": 2, "killerName": "The Hillbilly" },
@@ -34,7 +34,7 @@
 
   { "code": "ruin" , "name": "Ruin", "cost": 4, "killerName": "The Hag" },
   { "code": "devour_hope" , "name": "Devour Hope", "cost": 4, "killerName": "The Hag" },
-  { "code": "the_thrid_seal" , "name": "The Third Seal", "cost": 2, "killerName": "The Hag" },
+  { "code": "the_third_seal" , "name": "The Third Seal", "cost": 2, "killerName": "The Hag" },
 
   { "code": "overwhelming_presence" , "name": "Overwhelming Presence", "cost": 1, "killerName": "The Doctor" },
   { "code": "monitor_and_abuse" , "name": "Monitor & Abuse", "cost": 3, "killerName": "The Doctor" },
@@ -60,7 +60,7 @@
   { "code": "coulrophobia" , "name": "Coulrophobia", "cost": 2, "killerName": "The Clown" },
   { "code": "pop_goes_the_weasel" , "name": "Pop Goes the Weasel", "cost": 5, "killerName": "The Clown" },
 
-  { "code": "spitir_fury" , "name": "Spirit Fury", "cost": 3, "killerName": "The Spirit" },
+  { "code": "spirit_fury" , "name": "Spirit Fury", "cost": 3, "killerName": "The Spirit" },
   { "code": "haunted_ground" , "name": "Haunted Ground", "cost": 3, "killerName": "The Spirit" },
   { "code": "rancor" , "name": "Rancor", "cost": 3, "killerName": "The Spirit" },
 
@@ -164,19 +164,19 @@
   { "code": "no_quarter" , "name": "No Quarter", "cost": 2, "killerName": "The Houndmaster" },
   { "code": "no_holds_barred" , "name": "No Holds Barred", "cost": 2, "killerName": "The Houndmaster" },
 
-  { "code": "springtraps_agony" , "name": "Springtrap's Agony", "cost": 4, "killerName": "The Attraction" },
-  { "code": "mechanical_menace" , "name": "Mechanical Menace", "cost": 3, "killerName": "The Attraction" },
-  { "code": "remnant" , "name": "Remnant", "cost": 3, "killerName": "The Attraction" },
+  { "code":  "forever_entwined", "name":  "Forever Entwined", "cost": 3, "killerName": "The Ghoul"},
+  { "code":  "nothing_but_misery", "name":  "Nothing but Misery", "cost": 5, "killerName": "The Ghoul"},
+  { "code":  "none_are_free", "name":  "None Are Free", "cost": 2, "killerName": "The Ghoul"},
 
-  { "code": "hive_mind" , "name": "Hive Mind", "cost": 3, "killerName": "The Swarm" },
-  { "code": "swarms_embrace" , "name": "Swarm's Embrace", "cost": 2, "killerName": "The Swarm" },
-  { "code": "parasitic_infection" , "name": "Parasitic Infection", "cost": 4, "killerName": "The Swarm" },
+  { "code":  "haywire", "name":  "Haywire", "cost": 3, "killerName": "The Animatronic"},
+  { "code":  "help_wanted", "name":  "Help Wanted", "cost": 2, "killerName": "The Animatronic"},
+  { "code":  "phantom_fear", "name":  "Phantom Fear", "cost": 2, "killerName": "The Animatronic"},
 
-  { "code": "laughing_gas" , "name": "Laughing Gas", "cost": 3, "killerName": "The Jester" },
-  { "code": "punchline" , "name": "Punchline", "cost": 2, "killerName": "The Jester" },
-  { "code": "spotlight" , "name": "Spotlight", "cost": 2, "killerName": "The Jester" },
+  { "code":  "overture_of_doom", "name":  "Overture of Doom", "cost": 3, "killerName": "The Krause"},
+  { "code":  "ravenous", "name":  "Ravenous", "cost": 4, "killerName": "The Krause"},
+  { "code":  "wandering_eye", "name":  "Wandering Eye", "cost": 3, "killerName": "The Krause"},
 
-  { "code": "battlefield_command" , "name": "Battlefield Command", "cost": 4, "killerName": "The Warlord" },
-  { "code": "iron_march" , "name": "Iron March", "cost": 3, "killerName": "The Warlord" },
-  { "code": "trench_warfare" , "name": "Trench Warfare", "cost": 2, "killerName": "The Warlord" }
+  { "code":  "hive_mind", "name":  "Hive Mind", "cost": 2, "killerName": "The First"},
+  { "code":  "secret_project", "name":  "Secret Project", "cost": 2, "killerName": "The First"},
+  { "code":  "turn_back_the_clock", "name":  "Turn Back the Clock", "cost": 3, "killerName": "The First"}
 ]
