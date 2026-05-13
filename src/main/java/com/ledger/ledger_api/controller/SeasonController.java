@@ -43,13 +43,13 @@ public class SeasonController {
     @GetMapping("/active")
     public ResponseEntity<SeasonDetailsResponse> getActiveSeason(@AuthenticationPrincipal OAuth2User principal) {
         Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
-        return ResponseEntity.ok(seasonService.getActiveSeasonDetails(player.getId()));
-    }
 
-    @GetMapping("/{seasonId}/trials")
-    public ResponseEntity<List<Trial>> getSeasonTrials(@PathVariable UUID seasonId, @AuthenticationPrincipal OAuth2User principal) {
-        List<Trial> trialHistory = trialService.getTrialsBySeason(seasonId);
-        return ResponseEntity.ok(trialHistory);
+        try {
+            SeasonDetailsResponse response = seasonService.getActiveSeasonDetails(player.getId());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw e;
+        }
     }
 
     @GetMapping("/variant/{variantType}")
@@ -57,17 +57,21 @@ public class SeasonController {
             @PathVariable String variantType,
             @AuthenticationPrincipal OAuth2User principal) {
 
-        // 1. Get the securely authenticated player
         Player player = playerService.getOrCreatePlayer(
                 principal.getName(),
                 principal.getAttribute("email"),
                 principal.getAttribute("name")
         );
 
-        // 2. Call the exact service method we already built
         List<Season> seasons = seasonService.getSeasonsByVariant(player.getId(), variantType);
 
         return ResponseEntity.ok(seasons);
+    }
+
+    @GetMapping("/{seasonId}/trials")
+    public ResponseEntity<List<Trial>> getSeasonTrials(@PathVariable UUID seasonId, @AuthenticationPrincipal OAuth2User principal) {
+        List<Trial> trialHistory = trialService.getTrialsBySeason(seasonId);
+        return ResponseEntity.ok(trialHistory);
     }
 
     @GetMapping("/variant/{variantType}/stats")

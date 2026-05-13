@@ -1,5 +1,6 @@
 package com.ledger.ledger_api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ public class SeasonStats {
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId // Tells Hibernate to use the Season's ID as this entity's PK
     @JoinColumn(name = "season_id")
+    @JsonIgnore
     private Season season;
 
     private Integer matchesPlayed = 0;

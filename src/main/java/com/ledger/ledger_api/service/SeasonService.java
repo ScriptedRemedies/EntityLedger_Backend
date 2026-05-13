@@ -109,11 +109,34 @@ public class SeasonService {
         return season;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(noRollbackFor = ResourceNotFoundException.class)
     public SeasonDetailsResponse getActiveSeasonDetails(UUID playerId) {
+
         Season season = seasonRepo.findByPlayerIdAndStatus(playerId, Season.SeasonStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("No active season found."));
 
+        LocalDate startDate = season.getStartDate().toLocalDate();
+        LocalDate targetResetDate = startDate.withDayOfMonth(13);
+
+        if (startDate.isAfter(targetResetDate) || startDate.isEqual(targetResetDate)) {
+            targetResetDate = targetResetDate.plusMonths(1);
+        }
+
+        LocalDate today = LocalDate.now();
+
+        if (today.isAfter(targetResetDate) || today.isEqual(targetResetDate)) {
+
+            season.setStatus(Season.SeasonStatus.FAILED_TIME);
+
+            // FORCE Hibernate to write to the database immediately before throwing the exception
+            seasonRepo.saveAndFlush(season);
+
+            throw new ResourceNotFoundException("Time ran out! Your season has failed.");
+        }
+
+        Integer daysLeft = (int) ChronoUnit.DAYS.between(today, targetResetDate);
+
+        // --- FETCH THE REST OF THE DATA ---
         SeasonStats stats = statsRepo.findById(season.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Stats not found for season."));
 
@@ -130,16 +153,12 @@ public class SeasonService {
                         r.getStatus().name(), r.getKiller().getCost()))
                 .collect(Collectors.toList());
 
-        // --- NEW LOGIC: FIND MOST RECENT KILLER ---
-        // Fetch all trials for this season
         List<Trial> trials = trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(season.getId());
         Killer displayKiller = null;
 
         if (trials != null && !trials.isEmpty()) {
-            // Grab the killer from the very last trial played
             displayKiller = trials.get(trials.size() - 1).getKiller();
         } else {
-            // Fallback: Find the first available killer in the roster
             displayKiller = rosterRepo.findBySeasonId(season.getId()).stream()
                     .filter(r -> r.getStatus() == SeasonRoster.RosterStatus.AVAILABLE)
                     .map(SeasonRoster::getKiller)
@@ -147,23 +166,11 @@ public class SeasonService {
                     .orElse(null);
         }
 
-        // Construct the strings directly for the frontend
         String characterName = displayKiller != null ? displayKiller.getName() : "The Entity";
         String characterImageUrl = displayKiller != null ?
                 "/assets/Killer Portraits/" + displayKiller.getName() + ".png" :
                 "/assets/placeholder-killer.png";
 
-        // --- NEW LOGIC: DBD RANK RESET COUNTDOWN ---
-        LocalDate today = LocalDate.now();
-        LocalDate resetDate = today.withDayOfMonth(13); // DbD resets on the 13th
-
-        // If today is the 13th or later, the next reset is next month
-        if (today.isAfter(resetDate) || today.isEqual(resetDate)) {
-            resetDate = resetDate.plusMonths(1);
-        }
-        Integer daysLeft = (int) ChronoUnit.DAYS.between(today, resetDate);
-
-        // Return the fully expanded payload
         return new SeasonDetailsResponse(
                 season.getId(), season.getVariantType(), season.getStatus(),
                 season.getStartDate(), season.getEndDate(), season.getCurrentGrade(),
@@ -176,10 +183,7 @@ public class SeasonService {
 
     @Transactional(readOnly = true)
     public List<Season> getSeasonsByVariant(UUID playerId, String variantTypeString) {
-        // Convert the URL string (e.g., "STANDARD") into your Java Enum
         Season.VariantType type = Season.VariantType.valueOf(variantTypeString.toUpperCase());
-
-        // Fetch all seasons for this specific variant, newest first
         return seasonRepo.findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(playerId, type);
     }
 
@@ -191,32 +195,26 @@ public class SeasonService {
         int totalTrials = 0;
         double totalKillRateWeight = 0.0;
 
-        // Loop through all seasons of this variant to aggregate the stats
         for (Season season : variantSeasons) {
             SeasonStats stats = statsRepo.findById(season.getId()).orElse(null);
 
             if (stats != null && stats.getMatchesPlayed() > 0) {
                 totalTrials += stats.getMatchesPlayed();
-                // Multiply the kill rate by the matches played to get a weighted calculation
                 totalKillRateWeight += (stats.getKillRate() * stats.getMatchesPlayed());
             }
         }
 
-        // Calculate the true overall kill rate across all seasons
         double overallKillRate = totalTrials > 0 ? (totalKillRateWeight / totalTrials) : 0.0;
 
-        // Return a Map so Jackson automatically converts it into a JSON object
-        // Notice we use "trialsPlayed" as the key to perfectly match your React frontend!
         return Map.of(
                 "trialsPlayed", totalTrials,
-                "killRate", Math.round(overallKillRate * 10.0) / 10.0 // Rounds to 1 decimal place
+                "killRate", Math.round(overallKillRate * 10.0) / 10.0
         );
     }
 
     // Sell Killer logic for Blood Money & Afterburn
     @Transactional
     public Season sellKiller(UUID playerId, UUID seasonId, Long killerId) {
-        // 1. Fetch and validate season ownership
         Season season = seasonRepo.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
 
@@ -224,18 +222,15 @@ public class SeasonService {
             throw new IllegalStateException("You do not have permission to modify this season.");
         }
 
-        // 2. Ensure this is actually a Blood Money season
         if (season.getVariantType() != Season.VariantType.BLOOD_MONEY) {
             throw new IllegalStateException("You can only sell killers in the Blood Money variant.");
         }
 
-        // 3. Find the specific killer in this season's roster
         SeasonRoster rosterEntry = season.getRosters().stream()
                 .filter(r -> r.getKiller().getId().equals(killerId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Killer not found in this season's roster."));
 
-        // 4. Validate the killer can be sold
         if (rosterEntry.getStatus() == SeasonRoster.RosterStatus.SOLD) {
             throw new IllegalStateException("This killer has already been sold.");
         }
@@ -243,7 +238,6 @@ public class SeasonService {
             throw new IllegalStateException("You cannot sell a dead killer.");
         }
 
-        // 5. Update the financial state
         Map<String, Object> state = season.getVariantState();
         int currentBalance = (int) state.getOrDefault("balance", 0);
         int sellPrice = rosterEntry.getKiller().getCost();
@@ -251,29 +245,23 @@ public class SeasonService {
         state.put("balance", currentBalance + sellPrice);
         season.setVariantState(state);
 
-        // 6. Mark as SOLD
         rosterEntry.setStatus(SeasonRoster.RosterStatus.SOLD);
 
-        // 7. Save the changes
         rosterRepo.save(rosterEntry);
         return seasonRepo.save(season);
     }
 
     @Transactional
     public Season completeSeason(UUID playerId, UUID seasonId) {
-        // 1. Find the season
         Season season = seasonRepo.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
 
-        // 2. Verify the player owns this season so they can't end someone else's game
         if (!season.getPlayer().getId().equals(playerId)) {
             throw new IllegalStateException("You do not have permission to modify this season.");
         }
 
-        // 3. Flip the status
         season.setStatus(Season.SeasonStatus.COMPLETED);
 
-        // 4. Save and return
         return seasonRepo.save(season);
     }
 }
