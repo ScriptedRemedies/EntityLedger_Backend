@@ -28,6 +28,8 @@ public class SeasonExpirationJob {
 
         for (Season season : activeSeasons) {
             season.setStatus(Season.SeasonStatus.FAILED_TIME);
+            // FIXED: Stamp the exact moment the Entity claims the season
+            season.setEndDate(java.time.LocalDateTime.now());
         }
 
         seasonRepo.saveAll(activeSeasons);

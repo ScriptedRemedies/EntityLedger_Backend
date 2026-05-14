@@ -125,12 +125,14 @@ public class SeasonService {
         LocalDate today = LocalDate.now();
 
         if (today.isAfter(targetResetDate) || today.isEqual(targetResetDate)) {
-
             season.setStatus(Season.SeasonStatus.FAILED_TIME);
 
-            // FORCE Hibernate to write to the database immediately before throwing the exception
+            // FIXED: Stamp the end date during Lazy Evaluation as well!
+            season.setEndDate(LocalDateTime.now());
+
             seasonRepo.saveAndFlush(season);
 
+            // Throw exception so the frontend kicks the user back to the "Start Challenge" screen
             throw new ResourceNotFoundException("Time ran out! Your season has failed.");
         }
 
