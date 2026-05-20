@@ -24,11 +24,6 @@ public class Emblem {
     @Column(nullable = false)
     private EmblemType type;
 
-    public enum EmblemCategory {
-        NONE, BRONZE, SILVER, GOLD, IRIDESCENT
-    }
-
-    public enum EmblemType {
-        DEVOUT, MALICIOUS, GATEKEEPER, CHASER
-    }
+    public enum EmblemCategory { DEVOUT, MALICIOUS, GATEKEEPER, CHASER }
+    public enum EmblemType { NONE, BRONZE, SILVER, GOLD, IRIDESCENT }
 }

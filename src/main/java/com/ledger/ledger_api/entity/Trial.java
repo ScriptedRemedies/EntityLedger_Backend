@@ -35,6 +35,10 @@ public class Trial {
 
     private Integer pipProgression; // Can be negative, zero, or positive
 
+    @Enumerated(EnumType.STRING)
+    private GradeRule.Grade resultingGrade;
+    private Integer resultingPips;
+
     // --- Join Tables Handled by Hibernate ---
 
     @ManyToMany
@@ -60,4 +64,7 @@ public class Trial {
             inverseJoinColumns = @JoinColumn(name = "emblem_id")
     )
     private Set<Emblem> emblems = new HashSet<>();
+
+    @OneToMany(mappedBy = "trial", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<TrialSurvivor> survivors = new java.util.ArrayList<>();
 }

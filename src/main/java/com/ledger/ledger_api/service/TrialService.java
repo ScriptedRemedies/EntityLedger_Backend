@@ -1,7 +1,5 @@
 package com.ledger.ledger_api.service;
 
-// PURPOSE: Handles logging matches and calculating pip progression
-
 import com.ledger.ledger_api.dto.TrialSubmitRequest;
 import com.ledger.ledger_api.dto.TrialSummaryResponse;
 import com.ledger.ledger_api.entity.*;
@@ -13,6 +11,8 @@ import com.ledger.ledger_api.strategy.VariantStrategy;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ledger.ledger_api.entity.Emblem;
+import com.ledger.ledger_api.repository.EmblemRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,82 +26,128 @@ public class TrialService {
     private final KillerRepository killerRepo;
     private final ApplicationEventPublisher eventPublisher;
 
-    // Spring automatically injects all your strategy files into this map!
+    // 1. Inject the missing Repositories
+    private final PerkRepository perkRepo;
+    private final AddOnRepository addOnRepo;
+    private final EmblemRepository emblemRepo;
+
     private final Map<String, VariantStrategy> strategies;
 
     public TrialService(
             SeasonRepository seasonRepo, TrialRepository trialRepo,
             SeasonRosterRepository rosterRepo, KillerRepository killerRepo,
-            ApplicationEventPublisher eventPublisher, Map<String, VariantStrategy> strategies) {
+            ApplicationEventPublisher eventPublisher, Map<String, VariantStrategy> strategies,
+            PerkRepository perkRepo, AddOnRepository addOnRepo, EmblemRepository emblemRepo) {
         this.seasonRepo = seasonRepo;
         this.trialRepo = trialRepo;
         this.rosterRepo = rosterRepo;
         this.killerRepo = killerRepo;
         this.eventPublisher = eventPublisher;
         this.strategies = strategies;
+        this.perkRepo = perkRepo;
+        this.addOnRepo = addOnRepo;
+        this.emblemRepo = emblemRepo;
     }
 
     @Transactional
     public TrialSummaryResponse submitTrial(TrialSubmitRequest request, UUID playerId) {
-        // 1. Fetch the active season
         Season season = seasonRepo.findByPlayerIdAndStatus(playerId, Season.SeasonStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("No active season found for this player."));
 
-        // 2. Fetch the specific killer's roster state for this season
         SeasonRoster killerRoster = rosterRepo.findBySeasonIdAndKillerId(season.getId(), request.killerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Killer not found in active season roster."));
 
-        // 3. Fetch the correct ruleset based on the season's variant enum
         VariantStrategy strategy = strategies.get(season.getVariantType().name());
         if (strategy == null) {
             throw new IllegalStateException("Strategy not implemented for " + season.getVariantType());
         }
 
-        // 4. Validate they are allowed to play this match (Checks dead/cooldown/funds)
         strategy.validateTrialStart(season, killerRoster);
 
-        // 5. Build the Trial entity
         Trial trial = new Trial();
         trial.setSeason(season);
         trial.setKiller(killerRoster.getKiller());
         trial.setTrialNumber(trialRepo.countBySeasonId(season.getId()) + 1);
         trial.setPipProgression(request.pipProgression());
 
-        // TODO: In a production app, you would fetch Perks and AddOns from their repos here using request.perkIds()
-        // and attach them to the trial entity. For brevity, we assume that happens here.
+        // --- FETCH AND ATTACH ENTITIES ---
 
-        // 6. Apply rules and consequences (killing characters, deducting funds, etc.)
+        // 2. Process Perks
+        if (request.perkIds() != null && !request.perkIds().isEmpty()) {
+            trial.setPerks(new HashSet<>(perkRepo.findAllById(request.perkIds())));
+        }
+
+        // 3. Process Add-ons
+        if (request.addOnIds() != null && !request.addOnIds().isEmpty()) {
+            trial.setAddOns(new HashSet<>(addOnRepo.findAllById(request.addOnIds())));
+        }
+
+        // 4. Process Emblems
+        if (request.emblems() != null && !request.emblems().isEmpty()) {
+            Set<Emblem> trialEmblems = request.emblems().stream().map(payload -> {
+                // Map String category to Enum
+                Emblem.EmblemCategory category = Emblem.EmblemCategory.valueOf(payload.category().toUpperCase());
+
+                // Handle the naming difference: UI sends "PLATINUM", Database/Enum expects "IRIDESCENT"
+                String safeQuality = payload.quality().toUpperCase().equals("PLATINUM")
+                        ? "IRIDESCENT"
+                        : payload.quality().toUpperCase();
+                Emblem.EmblemType type = Emblem.EmblemType.valueOf(safeQuality);
+
+                // Fetch from database and map
+                return emblemRepo.findByCategoryAndType(category, type)
+                        .orElseThrow(() -> new ResourceNotFoundException("Emblem not found: " + category + " " + type));
+            }).collect(Collectors.toSet());
+
+            trial.setEmblems(trialEmblems);
+        }
+
         strategy.applyTrialResults(season, killerRoster, trial, request);
 
-        // Check if the season is now over based on the specific variant's rules
         if (strategy.isSeasonOver(season)) {
             season.setStatus(Season.SeasonStatus.COMPLETED);
         }
 
-        // 7. Save everything to the database
-        // Because of @Transactional, if anything fails, none of this saves, preventing corrupted data.
         trialRepo.save(trial);
         rosterRepo.save(killerRoster);
         seasonRepo.save(season);
 
-        // 8. Publish the event to update the stats in the background without slowing down the UI
         eventPublisher.publishEvent(new TrialCompletedEvent(season.getId()));
 
-        // 9. Return the formatted DTO back to the controller
+        // 5. Build full DTO response for the UI
         return new TrialSummaryResponse(
                 trial.getId(),
                 trial.getTrialNumber(),
                 trial.getKiller().getName(),
                 trial.getPipProgression(),
-                Collections.emptyList(), // Placeholder for perk names
-                Collections.emptyList(), // Placeholder for addon names
-                request.survivorOutcomes().stream().map(Enum::name).collect(Collectors.toList())
+                trial.getResultingGrade() != null ? trial.getResultingGrade().name() : season.getCurrentGrade().name(),
+                trial.getResultingPips() != null ? trial.getResultingPips() : season.getCurrentPips(),
+
+                // Survivor Outcomes
+                trial.getSurvivors().stream().map(s -> s.getOutcome().name()).collect(Collectors.toList()),
+
+                // Emblems (Maps to icons)
+                trial.getEmblems().stream().map(e -> new TrialSummaryResponse.EmblemDTO(
+                        e.getCategory().name(),
+                        "/assets/Emblems/" + e.getCategory().name().toLowerCase() + "_" + e.getType().name().toLowerCase() + ".png"
+                )).collect(Collectors.toList()),
+
+                // Perks (Maps to icons)
+                trial.getPerks().stream().map(p -> new TrialSummaryResponse.PerkDTO(
+                        p.getName(),
+                        "/assets/Perks/" + p.getName() + ".png"
+                )).collect(Collectors.toList()),
+
+                // Add-ons (Maps to icons, replacing % to match your file naming convention)
+                trial.getAddOns().stream().map(a -> new TrialSummaryResponse.AddonDTO(
+                        a.getName(),
+                        "/assets/Addons/" + trial.getKiller().getName() + "/" + a.getName().replace("%", "") + ".png"
+                )).collect(Collectors.toList())
         );
     }
 
     @Transactional(readOnly = true)
     public List<Trial> getTrialsBySeason(UUID seasonId) {
-        // Fetches the list from the database
         return trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(seasonId);
     }
 }

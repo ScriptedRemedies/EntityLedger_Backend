@@ -27,8 +27,9 @@ public class TrialController {
     }
 
     @PostMapping
-    public ResponseEntity<TrialSummaryResponse> logTrial(@Valid @RequestBody TrialSubmitRequest request,
-                                                         OAuth2User principal) {
+    public ResponseEntity<TrialSummaryResponse> logTrial(
+            @Valid @RequestBody TrialSubmitRequest request,
+            @AuthenticationPrincipal OAuth2User principal) {
         Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
         TrialSummaryResponse response = trialService.submitTrial(request, player.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
