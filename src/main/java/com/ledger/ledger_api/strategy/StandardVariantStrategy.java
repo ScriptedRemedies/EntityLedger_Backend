@@ -60,7 +60,19 @@ public class StandardVariantStrategy implements VariantStrategy {
 
         if (gateEscape) {
             killerRoster.setStatus(SeasonRoster.RosterStatus.DEAD);
-            state.put("lastPlayedKillerId", null);
+
+            // Find the next killer in the roster who is NOT dead
+            SeasonRoster nextAvailable = season.getRosters().stream()
+                    .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD
+                            && !r.getId().equals(killerRoster.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (nextAvailable != null) {
+                state.put("lastPlayedKillerId", nextAvailable.getKiller().getId().toString());
+            } else {
+                state.put("lastPlayedKillerId", null); // Everyone is dead!
+            }
         } else {
             state.put("lastPlayedKillerId", killerRoster.getKiller().getId().toString());
         }
