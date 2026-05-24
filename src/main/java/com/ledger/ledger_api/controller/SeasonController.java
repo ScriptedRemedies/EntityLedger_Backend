@@ -2,6 +2,7 @@ package com.ledger.ledger_api.controller;
 
 import com.ledger.ledger_api.dto.SeasonCreateRequest;
 import com.ledger.ledger_api.dto.SeasonDetailsResponse;
+import com.ledger.ledger_api.dto.VariantStatsResponse;
 import com.ledger.ledger_api.entity.Player;
 import com.ledger.ledger_api.entity.Season;
 import com.ledger.ledger_api.entity.Trial;
@@ -16,7 +17,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -75,7 +75,7 @@ public class SeasonController {
     }
 
     @GetMapping("/variant/{variantType}/stats")
-    public ResponseEntity<Map<String, Object>> getVariantStats(
+    public ResponseEntity<VariantStatsResponse> getVariantStats(
             @PathVariable String variantType,
             @AuthenticationPrincipal OAuth2User principal) {
 

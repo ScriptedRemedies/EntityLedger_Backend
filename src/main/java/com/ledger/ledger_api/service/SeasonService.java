@@ -2,6 +2,7 @@ package com.ledger.ledger_api.service;
 
 import com.ledger.ledger_api.dto.SeasonCreateRequest;
 import com.ledger.ledger_api.dto.SeasonDetailsResponse;
+import com.ledger.ledger_api.dto.VariantStatsResponse;
 import com.ledger.ledger_api.entity.*;
 import com.ledger.ledger_api.exception.ActiveSeasonExistsException;
 import com.ledger.ledger_api.exception.ResourceNotFoundException;
@@ -13,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -190,27 +193,101 @@ public class SeasonService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getVariantStats(UUID playerId, String variantTypeString) {
+    public VariantStatsResponse getVariantStats(UUID playerId, String variantTypeString) {
         Season.VariantType type = Season.VariantType.valueOf(variantTypeString.toUpperCase());
         List<Season> variantSeasons = seasonRepo.findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(playerId, type);
 
-        int totalTrials = 0;
-        double totalKillRateWeight = 0.0;
-
+        // Gather every trial from every season of this variant
+        List<Trial> allTrialsForVariant = new ArrayList<>();
         for (Season season : variantSeasons) {
-            SeasonStats stats = statsRepo.findById(season.getId()).orElse(null);
-
-            if (stats != null && stats.getMatchesPlayed() > 0) {
-                totalTrials += stats.getMatchesPlayed();
-                totalKillRateWeight += (stats.getKillRate() * stats.getMatchesPlayed());
-            }
+            allTrialsForVariant.addAll(trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(season.getId()));
         }
 
-        double overallKillRate = totalTrials > 0 ? (totalKillRateWeight / totalTrials) : 0.0;
+        // Crunch the numbers!
+        return calculateVariantStats(allTrialsForVariant);
+    }
+    private VariantStatsResponse calculateVariantStats(List<Trial> trials) {
+        int matches = trials.size();
+        if (matches == 0) {
+            return new VariantStatsResponse(0, 0.0, 0.0, 0, 0.0, 0.0, 0, List.of(), List.of());
+        }
 
-        return Map.of(
-                "trialsPlayed", totalTrials,
-                "killRate", Math.round(overallKillRate * 10.0) / 10.0
+        int totalKills = 0;
+        int fourKCount = 0;
+        int pipSum = 0;
+        int lossCount = 0;
+        int hatchCount = 0;
+        int twoToThreeKillsWithGates = 0;
+
+        Map<String, Integer> perkCounts = new HashMap<>();
+        Map<String, Integer> iriEmblemCounts = new HashMap<>();
+
+        // Ensure these keys always exist so the UI maps them correctly
+        iriEmblemCounts.put("CHASER", 0);
+        iriEmblemCounts.put("DEVOUT", 0);
+        iriEmblemCounts.put("GATEKEEPER", 0);
+        iriEmblemCounts.put("MALICIOUS", 0);
+
+        for (Trial t : trials) {
+            pipSum += t.getPipProgression() != null ? t.getPipProgression() : 0;
+
+            int killsInTrial = 0;
+            boolean gateEscape = false;
+            boolean hatchEscape = false;
+
+            for (TrialSurvivor s : t.getSurvivors()) {
+                String outcome = s.getOutcome().name();
+                if (outcome.equals("KILLED") || outcome.equals("SACRIFICED")) {
+                    killsInTrial++;
+                } else if (outcome.equals("ESCAPED")) {
+                    gateEscape = true;
+                } else if (outcome.equals("HATCH_ESCAPE")) {
+                    hatchEscape = true;
+                }
+            }
+
+            totalKills += killsInTrial;
+
+            if (killsInTrial == 4) fourKCount++;
+            if (gateEscape) lossCount++; // Loss = Entity Displeased / Survivor escaped via gate
+            if (hatchEscape) hatchCount++;
+            if ((killsInTrial == 2 || killsInTrial == 3) && gateEscape) twoToThreeKillsWithGates++;
+
+            // Tally Perks
+            t.getPerks().forEach(p -> perkCounts.put(p.getName(), perkCounts.getOrDefault(p.getName(), 0) + 1));
+
+            // Tally Iridescent Emblems
+            t.getEmblems().stream()
+                    .filter(e -> e.getType().name().equals("IRIDESCENT"))
+                    .forEach(e -> iriEmblemCounts.put(e.getCategory().name(), iriEmblemCounts.get(e.getCategory().name()) + 1));
+        }
+
+        // Helper to format percentages
+        var formatPct = (java.util.function.BiFunction<Integer, Integer, Double>) (count, total) ->
+                Math.round(((double) count / total) * 1000.0) / 10.0;
+
+        // Map Top 4 Perks
+        List<VariantStatsResponse.PerkStat> topPerks = perkCounts.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(4)
+                .map(e -> new VariantStatsResponse.PerkStat(e.getKey(), formatPct.apply(e.getValue(), matches)))
+                .toList();
+
+        // Map Emblems
+        List<VariantStatsResponse.EmblemStat> emblems = iriEmblemCounts.entrySet().stream()
+                .map(e -> new VariantStatsResponse.EmblemStat(e.getKey(), formatPct.apply(e.getValue(), matches)))
+                .toList();
+
+        return new VariantStatsResponse(
+                matches,
+                formatPct.apply(totalKills, matches * 4), // Kill rate is based on total survivors faced
+                formatPct.apply(fourKCount, matches),
+                pipSum,
+                formatPct.apply(lossCount, matches),
+                formatPct.apply(hatchCount, matches),
+                twoToThreeKillsWithGates,
+                topPerks,
+                emblems
         );
     }
 

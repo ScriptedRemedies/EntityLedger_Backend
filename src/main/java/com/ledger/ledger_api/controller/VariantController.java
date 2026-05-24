@@ -1,5 +1,6 @@
 package com.ledger.ledger_api.controller;
 
+import com.ledger.ledger_api.dto.VariantStatsResponse;
 import com.ledger.ledger_api.entity.Player;
 import com.ledger.ledger_api.entity.Season; // Or your SeasonDTO
 import com.ledger.ledger_api.service.PlayerService;
@@ -38,12 +39,12 @@ public class VariantController {
 
     // Catches: GET /api/v1/variants/STANDARD/stats
     @GetMapping("/{variantType}/stats")
-    public ResponseEntity<Map<String, Object>> getVariantStats(
+    public ResponseEntity<VariantStatsResponse> getVariantStats(
             @PathVariable String variantType,
             @AuthenticationPrincipal OAuth2User principal) {
 
         Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
-        Map<String, Object> stats = seasonService.getVariantStats(player.getId(), variantType);
+        VariantStatsResponse stats = seasonService.getVariantStats(player.getId(), variantType);
 
         return ResponseEntity.ok(stats);
     }
