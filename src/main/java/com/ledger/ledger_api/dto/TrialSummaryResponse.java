@@ -16,7 +16,8 @@ public record TrialSummaryResponse(
         List<String> survivorResults,
         List<EmblemDTO> emblems,
         List<PerkDTO> perks,
-        List<AddonDTO> addons
+        List<AddonDTO> addons,
+        String seasonStatus
 ) {
     public record EmblemDTO(String name, String iconUrl) {}
     public record PerkDTO(String name, String iconUrl) {}

@@ -142,7 +142,9 @@ public class TrialService {
                 trial.getAddOns().stream().map(a -> new TrialSummaryResponse.AddonDTO(
                         a.getName(),
                         "/assets/Addons/" + trial.getKiller().getName() + "/" + a.getName().replace("%", "") + ".png"
-                )).collect(Collectors.toList())
+                )).collect(Collectors.toList()),
+
+                season.getStatus().name()
         );
     }
 
