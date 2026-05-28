@@ -74,6 +74,8 @@ public class SeasonService {
         // Initialize a blank state map before handing it to the strategy
         season.setVariantState(new java.util.HashMap<>());
 
+        strategy.initializeSeasonState(season, new java.util.HashMap<>());
+
         season = seasonRepo.save(season);
 
         SeasonStats stats = new SeasonStats();
