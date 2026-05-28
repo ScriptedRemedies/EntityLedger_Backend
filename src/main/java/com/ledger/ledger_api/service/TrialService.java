@@ -104,8 +104,13 @@ public class TrialService {
 
         strategy.applyTrialResults(season, killerRoster, trial, request);
 
-        if (strategy.isSeasonOver(season)) {
-            season.setStatus(Season.SeasonStatus.COMPLETED);
+        // 1. Capture the exact status evaluated by the strategy
+        Season.SeasonStatus terminalStatus = strategy.isSeasonOver(season);
+
+        // 2. If it's not ACTIVE, the season is officially over.
+        if (terminalStatus != Season.SeasonStatus.ACTIVE) {
+            season.setStatus(terminalStatus);
+            season.setEndDate(java.time.LocalDateTime.now()); // Set the official end timestamp
         }
 
         trialRepo.save(trial);

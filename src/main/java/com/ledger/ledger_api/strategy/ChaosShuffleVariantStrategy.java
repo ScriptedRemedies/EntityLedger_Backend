@@ -113,15 +113,23 @@ public class ChaosShuffleVariantStrategy implements VariantStrategy {
     }
 
     // --- END GAME CHECK ---
+    // TODO: Properly write the end of season for this variant
     @Override
-    public boolean isSeasonOver(Season season) {
-        // Condition 1: Player won the challenge
-        if (season.getCurrentGrade().name().equals("IRIDESCENT_1")) {
-            return true;
+    public Season.SeasonStatus isSeasonOver(Season season) {
+        // Success Condition: Reached Iridescent 1
+        if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
+            return Season.SeasonStatus.COMPLETED;
         }
 
-        // Condition 2: Player lost the challenge (all killers are dead)
-        return season.getRosters().stream()
+        // Failure Condition: All killers are dead
+        boolean allDead = season.getRosters().stream()
                 .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
+
+        if (allDead) {
+            return Season.SeasonStatus.FAILED_ROSTER;
+        }
+
+        // If neither condition is met, the season continues
+        return Season.SeasonStatus.ACTIVE;
     }
 }

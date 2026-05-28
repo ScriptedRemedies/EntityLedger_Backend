@@ -19,7 +19,6 @@ public interface VariantStrategy {
     // Applies consequences AFTER a trial ends (e.g., Deduct funds, kill character, use tokens)
     void applyTrialResults(Season season, SeasonRoster killerRoster, Trial trial, TrialSubmitRequest request);
 
-    // NEW: The SeasonService will call this after applyTrialResults.
-    // If it returns true, the backend automatically flips the Season status to COMPLETED.
-    boolean isSeasonOver(Season season);
+    // Returns the specific terminal status (completed, failed_roster, etc)
+    Season.SeasonStatus isSeasonOver(Season season);
 }

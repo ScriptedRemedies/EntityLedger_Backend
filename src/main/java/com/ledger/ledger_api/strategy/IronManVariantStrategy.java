@@ -151,20 +151,23 @@ public class IronManVariantStrategy implements VariantStrategy {
     }
 
     // --- STEP 4: END GAME ---
+    // TODO: Properly write the end of season for this variant
     @Override
-    public boolean isSeasonOver(Season season) {
-        Map<String, Object> state = season.getVariantState();
-
-        // Failure
-        if ((boolean) state.getOrDefault("runDead", false)) {
-            return true;
+    public Season.SeasonStatus isSeasonOver(Season season) {
+        // Success Condition: Reached Iridescent 1
+        if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
+            return Season.SeasonStatus.COMPLETED;
         }
 
-        // Success
-        if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_1")) {
-            return true;
+        // Failure Condition: All killers are dead
+        boolean allDead = season.getRosters().stream()
+                .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
+
+        if (allDead) {
+            return Season.SeasonStatus.FAILED_ROSTER;
         }
 
-        return false;
+        // If neither condition is met, the season continues
+        return Season.SeasonStatus.ACTIVE;
     }
 }

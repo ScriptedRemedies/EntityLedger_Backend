@@ -166,38 +166,23 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
     }
 
     // --- END GAME ---
+    // TODO: Properly write the end of season for this variant
     @Override
-    public boolean isSeasonOver(Season season) {
-        Map<String, Object> state = season.getVariantState();
-        int balance = (int) state.getOrDefault("balance", 0);
-
-        // Check if every killer is either DEAD or SOLD
-        boolean allKillersGone = season.getRosters().stream()
-                .allMatch(r -> r.getStatus() == SeasonRoster.RosterStatus.DEAD || r.getStatus() == SeasonRoster.RosterStatus.SOLD);
-
-        if (allKillersGone) {
-            return true; // Fail: Roster wiped
+    public Season.SeasonStatus isSeasonOver(Season season) {
+        // Success Condition: Reached Iridescent 1
+        if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
+            return Season.SeasonStatus.COMPLETED;
         }
 
-        // Check if they reached Iridescent 1
-        if (season.getCurrentGrade().name().equals("IRIDESCENT_1")) {
-            if (balance >= 0) {
-                return true; // Success!
-            } else {
-                // They reached Iri 1, but are negative.
-                // Do they have at least 1 alive/available killer left to sell?
-                boolean canStillSell = season.getRosters().stream()
-                        .anyMatch(r -> r.getStatus() == SeasonRoster.RosterStatus.AVAILABLE);
+        // Failure Condition: All killers are dead
+        boolean allDead = season.getRosters().stream()
+                .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
 
-                if (canStillSell) {
-                    // Give them their one last chance to hit the "Sell" button in the UI
-                    return false;
-                } else {
-                    return true; // Fail: Negative balance, no killers to sell
-                }
-            }
+        if (allDead) {
+            return Season.SeasonStatus.FAILED_ROSTER;
         }
 
-        return false;
+        // If neither condition is met, the season continues
+        return Season.SeasonStatus.ACTIVE;
     }
 }

@@ -119,14 +119,21 @@ public class StandardVariantStrategy implements VariantStrategy {
 
     // --- STEP 4: END GAME ---
     @Override
-    public boolean isSeasonOver(Season season) {
+    public Season.SeasonStatus isSeasonOver(Season season) {
         // Success Condition: Reached Iridescent 1
         if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
-            return true;
+            return Season.SeasonStatus.COMPLETED;
         }
 
         // Failure Condition: All killers are dead
-        return season.getRosters().stream()
+        boolean allDead = season.getRosters().stream()
                 .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
+
+        if (allDead) {
+            return Season.SeasonStatus.FAILED_ROSTER;
+        }
+
+        // If neither condition is met, the season continues
+        return Season.SeasonStatus.ACTIVE;
     }
 }
