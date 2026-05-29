@@ -34,6 +34,9 @@ public record TrialSubmitRequest(
         Boolean closedHatch,
         Boolean genBeforeHook,
         Boolean lastGenCompleted,
-        Boolean gateOpened
+        Boolean gateOpened,
+
+        // Chaos Shuffle Re-Roll Tokens
+        Boolean usedReRollToken
 ) {}
 

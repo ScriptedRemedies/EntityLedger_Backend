@@ -1,127 +1,189 @@
 package com.ledger.ledger_api.strategy;
 
 import com.ledger.ledger_api.dto.TrialSubmitRequest;
-import com.ledger.ledger_api.entity.Season;
-import com.ledger.ledger_api.entity.SeasonRoster;
-import com.ledger.ledger_api.entity.Trial;
-import com.ledger.ledger_api.entity.TrialSurvivor;
+import com.ledger.ledger_api.entity.*;
 import com.ledger.ledger_api.exception.GameRuleViolationException;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component("CHAOS_SHUFFLE")
 public class ChaosShuffleVariantStrategy implements VariantStrategy {
 
-    // --- INITIALIZE ---
+    private static final List<String> GRADE_PROGRESSION = Arrays.asList(
+            "ASH_IV", "ASH_III", "ASH_II", "ASH_I",
+            "BRONZE_IV", "BRONZE_III", "BRONZE_II", "BRONZE_I",
+            "SILVER_IV", "SILVER_III", "SILVER_II", "SILVER_I",
+            "GOLD_IV", "GOLD_III", "GOLD_II", "GOLD_I",
+            "IRIDESCENT_IV", "IRIDESCENT_III", "IRIDESCENT_II", "IRIDESCENT_I"
+    );
+
+    private int getMaxPipsForGrade(String grade) {
+        if (grade.startsWith("ASH")) return 3;
+        if (grade.startsWith("BRONZE")) return 4;
+        return 5;
+    }
+
+    // --- STEP 1: INITIALIZE ---
     @Override
     public void initializeSeasonState(Season season, Map<String, Object> requestConfig) {
-        Map<String, Object> state = season.getVariantState();
+        Map<String, Object> state = new HashMap<>();
 
-        // Start with 3 re roll tokens
-        state.put("rerollTokens", 3);
-
-        // Setup trackers for the cooldown logic
-        state.put("lastPlayedKillerId", null);
-        state.put("consecutiveCount", 0);
-        state.put("cooldowns", new HashMap<String, Integer>());
+        state.put("reRollTokens", 3);
+        state.put("currentStreakKillerId", null);
+        state.put("currentStreak", 0);
+        state.put("cooldownKillerId", null);
+        state.put("cooldownTrialsLeft", 0);
 
         season.setVariantState(state);
     }
 
-    // --- VALIDATE ---
+    // --- STEP 2: VALIDATE ---
     @Override
-    @SuppressWarnings("unchecked")
     public void validateTrialStart(Season season, SeasonRoster killerRoster) {
-        // Check if dead
         if (killerRoster.getStatus() == SeasonRoster.RosterStatus.DEAD) {
             throw new GameRuleViolationException("This killer is dead and cannot be played.");
         }
 
-        // Check if on cooldown
-        long availableKillersCount = season.getRosters().stream()
-                .filter(r -> r.getStatus() == SeasonRoster.RosterStatus.AVAILABLE)
-                .count();
+        Map<String, Object> state = season.getVariantState();
+        String cooldownKillerId = (String) state.get("cooldownKillerId");
 
-        if (availableKillersCount > 1) {
-            Map<String, Integer> cooldowns = (Map<String, Integer>) season.getVariantState().get("cooldowns");
-            String killerIdStr = killerRoster.getKiller().getId().toString();
-
-            if (cooldowns != null && cooldowns.getOrDefault(killerIdStr, 0) > 0) {
-                throw new GameRuleViolationException("This killer is on cooldown for " + cooldowns.get(killerIdStr) + " more trial(s).");
-            }
+        if (cooldownKillerId != null && cooldownKillerId.equals(killerRoster.getKiller().getId().toString())) {
+            throw new GameRuleViolationException("This killer is currently on a cooldown and cannot be used.");
         }
     }
 
-    // --- APPLY RESULTS ---
+    // --- STEP 3: APPLY RESULTS ---
     @Override
-    @SuppressWarnings("unchecked")
     public void applyTrialResults(Season season, SeasonRoster killerRoster, Trial trial, TrialSubmitRequest request) {
         Map<String, Object> state = season.getVariantState();
-        String currentKillerId = killerRoster.getKiller().getId().toString();
+        String killerIdStr = killerRoster.getKiller().getId().toString();
 
-        // PERMADEATH (Check for Gate Escape)
-        if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.ESCAPED)) {
+        // 1. ATTACH SURVIVORS & CALCULATE MATCH OUTCOME
+        int kills = 0;
+        boolean gateEscape = false;
+
+        List<TrialSurvivor> trialSurvivors = request.survivorOutcomes().stream().map(outcome -> {
+            TrialSurvivor survivor = new TrialSurvivor();
+            survivor.setTrial(trial);
+            survivor.setOutcome(outcome);
+            return survivor;
+        }).collect(Collectors.toList());
+
+        trial.setSurvivors(trialSurvivors);
+
+        for (TrialSurvivor.SurvivorOutcome outcome : request.survivorOutcomes()) {
+            if (outcome == TrialSurvivor.SurvivorOutcome.ESCAPED) gateEscape = true;
+            if (outcome == TrialSurvivor.SurvivorOutcome.KILLED || outcome == TrialSurvivor.SurvivorOutcome.SACRIFICED) kills++;
+        }
+
+        boolean trialWon = (kills >= 3 && !gateEscape);
+
+        // 2. TOKEN ECONOMY
+        int currentTokens = (int) state.getOrDefault("reRollTokens", 0);
+
+        // Deduct if used
+        if (Boolean.TRUE.equals(request.usedReRollToken())) {
+            currentTokens = Math.max(0, currentTokens - 1);
+        }
+
+        // Bonus for 4K with Gens remaining
+        if (kills == 4 && request.gensLeft() != null) {
+            if (request.gensLeft() == 4) currentTokens += 1;
+            if (request.gensLeft() == 5) currentTokens += 2;
+        }
+        state.put("reRollTokens", currentTokens);
+
+        // 3. COOLDOWN TICK
+        int cooldownLeft = (int) state.getOrDefault("cooldownTrialsLeft", 0);
+        if (cooldownLeft > 0) {
+            cooldownLeft--;
+            state.put("cooldownTrialsLeft", cooldownLeft);
+            if (cooldownLeft == 0) {
+                state.put("cooldownKillerId", null);
+            }
+        }
+
+        // 4. PERMADEATH vs STREAK
+        if (gateEscape) {
             killerRoster.setStatus(SeasonRoster.RosterStatus.DEAD);
-        }
+            state.put("currentStreakKillerId", null);
+            state.put("currentStreak", 0);
+        } else if (trialWon) {
+            String streakId = (String) state.get("currentStreakKillerId");
+            int streak = (int) state.getOrDefault("currentStreak", 0);
 
-        // TOKENS (Earn a token for 4K with 4 or 5 gens left)
-        Integer rerollTokens = (Integer) state.get("rerollTokens");
+            if (killerIdStr.equals(streakId)) {
+                streak++;
+            } else {
+                streakId = killerIdStr;
+                streak = 1;
+            }
 
-        // 2 Tokens for 5 gens, 1 token for 4 gens
-        if (request.kills() == 4 && request.gensLeft() == 5) {
-            state.put("rerollTokens", rerollTokens + 2);
-        } else if (request.kills() == 4 && request.gensLeft() == 4) {
-            state.put("rerollTokens", rerollTokens + 1);
-        }
-
-        // COOLDOWN MANAGEMENT
-        Map<String, Integer> cooldowns = (Map<String, Integer>) state.get("cooldowns");
-
-        // Reduce all active cooldowns by 1 (since a trial just happened)
-        cooldowns.entrySet().removeIf(entry -> {
-            int newCooldown = entry.getValue() - 1;
-            entry.setValue(newCooldown);
-            return newCooldown <= 0; // Remove them from the map if cooldown hits 0
-        });
-
-        // Handle the Consecutive Plays Rule
-        String lastPlayedId = (String) state.get("lastPlayedKillerId");
-        int consecutiveCount = (int) state.get("consecutiveCount");
-
-        if (currentKillerId.equals(lastPlayedId)) {
-            consecutiveCount++;
-            if (consecutiveCount >= 2) {
-                // They played them twice in a row! Apply the 2-trial penalty.
-                cooldowns.put(currentKillerId, 2);
-                // Reset the trackers so they start fresh next time
-                consecutiveCount = 0;
-                lastPlayedId = null;
+            // Check for cooldown trigger
+            if (streak >= 2) {
+                state.put("cooldownKillerId", killerIdStr);
+                state.put("cooldownTrialsLeft", 2);
+                state.put("currentStreakKillerId", null);
+                state.put("currentStreak", 0);
+            } else {
+                state.put("currentStreakKillerId", streakId);
+                state.put("currentStreak", streak);
             }
         } else {
-            // They played a different killer, reset the tracker to 1 for this new killer
-            lastPlayedId = currentKillerId;
-            consecutiveCount = 1;
+            // Did not win, did not die (e.g. 2 kills, hatch escape). Breaks streak.
+            state.put("currentStreakKillerId", null);
+            state.put("currentStreak", 0);
         }
 
-        // SAVE STATE BACK TO SEASON
-        state.put("cooldowns", cooldowns);
-        state.put("consecutiveCount", consecutiveCount);
-        state.put("lastPlayedKillerId", lastPlayedId);
         season.setVariantState(state);
+
+        // Safe cooldown logic, removes cooldown if only one killer is alive
+        long aliveCount = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD)
+                .count();
+
+        // If only 1 killer remains, clear the cooldown completely so the player isn't stuck
+        if (aliveCount <= 1) {
+            state.put("cooldownKillerId", null);
+            state.put("cooldownTrialsLeft", 0);
+            season.setVariantState(state); // Save the cleared state
+        }
+
+        // 5. PIP MATH
+        int currentPips = season.getCurrentPips() != null ? season.getCurrentPips() : 0;
+        int pipChange = request.pipProgression() != null ? request.pipProgression() : 0;
+        String currentGrade = season.getCurrentGrade() != null ? season.getCurrentGrade().name() : "ASH_IV";
+
+        int newPips = currentPips + pipChange;
+        int gradeIndex = GRADE_PROGRESSION.indexOf(currentGrade);
+
+        while (gradeIndex < GRADE_PROGRESSION.size() - 1 && newPips >= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex))) {
+            newPips -= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex));
+            gradeIndex++;
+        }
+
+        if (newPips < 0) newPips = 0;
+
+        String newGradeName = GRADE_PROGRESSION.get(gradeIndex);
+
+        season.setCurrentGrade(GradeRule.Grade.valueOf(newGradeName));
+        season.setCurrentPips(newPips);
+        trial.setResultingGrade(GradeRule.Grade.valueOf(newGradeName));
+        trial.setResultingPips(newPips);
     }
 
-    // --- END GAME CHECK ---
-    // TODO: Properly write the end of season for this variant
+    // --- STEP 4: END GAME ---
     @Override
     public Season.SeasonStatus isSeasonOver(Season season) {
-        // Success Condition: Reached Iridescent 1
         if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
             return Season.SeasonStatus.COMPLETED;
         }
 
-        // Failure Condition: All killers are dead
         boolean allDead = season.getRosters().stream()
                 .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
 
@@ -129,7 +191,6 @@ public class ChaosShuffleVariantStrategy implements VariantStrategy {
             return Season.SeasonStatus.FAILED_ROSTER;
         }
 
-        // If neither condition is met, the season continues
         return Season.SeasonStatus.ACTIVE;
     }
 }
