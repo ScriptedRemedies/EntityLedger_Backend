@@ -14,8 +14,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.ledger.ledger_api.entity.GradeRule;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 @Component("IRON_MAN")
 public class IronManVariantStrategy implements VariantStrategy {
+
+    private static final List<String> GRADE_PROGRESSION = Arrays.asList(
+            "ASH_IV", "ASH_III", "ASH_II", "ASH_I",
+            "BRONZE_IV", "BRONZE_III", "BRONZE_II", "BRONZE_I",
+            "SILVER_IV", "SILVER_III", "SILVER_II", "SILVER_I",
+            "GOLD_IV", "GOLD_III", "GOLD_II", "GOLD_I",
+            "IRIDESCENT_IV", "IRIDESCENT_III", "IRIDESCENT_II", "IRIDESCENT_I"
+    );
+
+    private int getMaxPipsForGrade(String grade) {
+        if (grade.startsWith("ASH")) return 3;
+        if (grade.startsWith("BRONZE")) return 4;
+        return 5;
+    }
 
     // --- STEP 1: INITIALIZE ---
     @Override
@@ -107,7 +125,6 @@ public class IronManVariantStrategy implements VariantStrategy {
             runDead = true;
         } else {
             // 2. ESCAPE PENALTY & MULLIGAN
-            // Note: Make sure TrialSurvivor.SurvivorOutcome matches your actual enum!
             boolean gateEscape = request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.ESCAPED);
 
             if (gateEscape) {
@@ -148,18 +165,61 @@ public class IronManVariantStrategy implements VariantStrategy {
         state.put("lastTrialEndTime", LocalDateTime.now().toString());
 
         season.setVariantState(state);
+
+        // --- FIX: SURVIVOR MAPPING ---
+        List<TrialSurvivor> trialSurvivors = request.survivorOutcomes().stream().map(outcome -> {
+            TrialSurvivor survivor = new TrialSurvivor();
+            survivor.setTrial(trial);
+            survivor.setOutcome(outcome);
+            return survivor;
+        }).collect(Collectors.toList());
+
+        trial.setSurvivors(trialSurvivors);
+
+        // --- FIX: PIP & GRADE MATH ---
+        String currentGrade = season.getCurrentGrade() != null ? season.getCurrentGrade().name() : "ASH_IV";
+        int currentPips = season.getCurrentPips() != null ? season.getCurrentPips() : 0;
+        int pipChange = request.pipProgression() != null ? request.pipProgression() : 0;
+
+        int newPips = currentPips + pipChange;
+        int gradeIndex = GRADE_PROGRESSION.indexOf(currentGrade);
+
+        // Handle Promotions
+        while (gradeIndex < GRADE_PROGRESSION.size() - 1 && newPips >= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex))) {
+            newPips -= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex));
+            gradeIndex++;
+        }
+
+        // Handle Demotions
+        if (newPips < 0) {
+            newPips = 0;
+        }
+
+        // Save the new values to the Season and Trial
+        String newGradeName = GRADE_PROGRESSION.get(gradeIndex);
+        season.setCurrentGrade(GradeRule.Grade.valueOf(newGradeName));
+        season.setCurrentPips(newPips);
+        trial.setResultingGrade(GradeRule.Grade.valueOf(newGradeName));
+        trial.setResultingPips(newPips);
     }
 
     // --- STEP 4: END GAME ---
-    // TODO: Properly write the end of season for this variant
     @Override
     public Season.SeasonStatus isSeasonOver(Season season) {
-        // Success Condition: Reached Iridescent 1
+        Map<String, Object> state = season.getVariantState();
+        boolean runDead = (boolean) state.getOrDefault("runDead", false);
+
+        // 1. Failure Condition: Run Dead (Gate Escape without Mulligan or Cheating)
+        if (runDead) {
+            return Season.SeasonStatus.FAILED_ROSTER; // Triggers the terminal recap screen
+        }
+
+        // 2. Success Condition: Reached Iridescent 1
         if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
             return Season.SeasonStatus.COMPLETED;
         }
 
-        // Failure Condition: All killers are dead
+        // 3. Failure Condition: All killers are dead (Failsafe)
         boolean allDead = season.getRosters().stream()
                 .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
 
@@ -167,7 +227,7 @@ public class IronManVariantStrategy implements VariantStrategy {
             return Season.SeasonStatus.FAILED_ROSTER;
         }
 
-        // If neither condition is met, the season continues
+        // If no terminal conditions are met, the season continues
         return Season.SeasonStatus.ACTIVE;
     }
 }
