@@ -319,14 +319,40 @@ public class SeasonService {
             throw new IllegalStateException("You cannot sell a dead killer.");
         }
 
+        // Extract the state map to update our ledger
         Map<String, Object> state = season.getVariantState();
         int currentBalance = (int) state.getOrDefault("balance", 0);
         int sellPrice = rosterEntry.getKiller().getCost();
 
+        // 1. Process the financial transaction
         state.put("balance", currentBalance + sellPrice);
-        season.setVariantState(state);
 
+        // 2. Update the specific roster item
         rosterEntry.setStatus(SeasonRoster.RosterStatus.SOLD);
+
+        // 3. --- COOLDOWN WAIVER CHECK ---
+        long remainingAlive = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                .count();
+
+        // If the sale dropped them to their final killer, wipe the active cooldown
+        if (remainingAlive <= 1) {
+            state.put("cooldownKillerId", null);
+            state.put("cooldownTrialsLeft", 0);
+        }
+
+        int newBalance = currentBalance + sellPrice;
+        boolean canAffordAnyone = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                .anyMatch(r -> r.getKiller().getCost() <= newBalance);
+
+        if (!canAffordAnyone) {
+            season.setStatus(Season.SeasonStatus.FAILED_ROSTER); // The run is dead
+            season.setEndDate(LocalDateTime.now());
+        }
+
+        // 4. Save the fully updated state back to the season
+        season.setVariantState(state);
 
         rosterRepo.save(rosterEntry);
         return seasonRepo.save(season);
@@ -342,6 +368,28 @@ public class SeasonService {
         }
 
         season.setStatus(Season.SeasonStatus.COMPLETED);
+
+        return seasonRepo.save(season);
+    }
+
+    @Transactional
+    public Season failSeason(UUID playerId, UUID seasonId) {
+        Season season = seasonRepo.findById(seasonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
+
+        if (!season.getPlayer().getId().equals(playerId)) {
+            throw new IllegalStateException("You do not have permission to modify this season.");
+        }
+
+        season.setStatus(Season.SeasonStatus.FAILED_TIME);
+        season.setEndDate(LocalDateTime.now());
+
+        // Specifically for Iron Man, ensure the run state is marked dead
+        Map<String, Object> state = season.getVariantState();
+        if (season.getVariantType() == Season.VariantType.IRON_MAN) {
+            state.put("runDead", true);
+            season.setVariantState(state);
+        }
 
         return seasonRepo.save(season);
     }

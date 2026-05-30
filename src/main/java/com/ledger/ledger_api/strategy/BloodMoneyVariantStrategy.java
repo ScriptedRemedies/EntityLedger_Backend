@@ -3,47 +3,55 @@ package com.ledger.ledger_api.strategy;
 import com.ledger.ledger_api.dto.TrialSubmitRequest;
 import com.ledger.ledger_api.entity.*;
 import com.ledger.ledger_api.exception.GameRuleViolationException;
-import com.ledger.ledger_api.repository.AddOnRepository;
-import com.ledger.ledger_api.repository.KillerRepository;
-import com.ledger.ledger_api.repository.PerkRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component("BLOOD_MONEY")
 public class BloodMoneyVariantStrategy implements VariantStrategy {
 
-    private final PerkRepository perkRepo;
-    private final AddOnRepository addOnRepo;
-    private final KillerRepository killerRepo;
+    private static final List<String> GRADE_PROGRESSION = Arrays.asList(
+            "ASH_IV", "ASH_III", "ASH_II", "ASH_I",
+            "BRONZE_IV", "BRONZE_III", "BRONZE_II", "BRONZE_I",
+            "SILVER_IV", "SILVER_III", "SILVER_II", "SILVER_I",
+            "GOLD_IV", "GOLD_III", "GOLD_II", "GOLD_I",
+            "IRIDESCENT_IV", "IRIDESCENT_III", "IRIDESCENT_II", "IRIDESCENT_I"
+    );
 
-    public BloodMoneyVariantStrategy(PerkRepository perkRepo, AddOnRepository addOnRepo, KillerRepository killerRepo) {
-        this.perkRepo = perkRepo;
-        this.addOnRepo = addOnRepo;
-        this.killerRepo = killerRepo;
+    private int getMaxPipsForGrade(String grade) {
+        if (grade.startsWith("ASH")) return 3;
+        if (grade.startsWith("BRONZE")) return 4;
+        return 5;
     }
 
-    // --- INITIALIZE ---
+    // --- STEP 1: INITIALIZE ---
     @Override
     public void initializeSeasonState(Season season, Map<String, Object> requestConfig) {
-        Map<String, Object> state = season.getVariantState();
+        Map<String, Object> state = new HashMap<>();
 
-        state.put("balance", 20); // Fixed starting amount
+        // Economy
+        state.put("balance", 20);
 
-        // Trackers for the "2 Wins in a row" cooldown
-        state.put("cooldowns", new HashMap<String, Integer>());
+        // Cooldown State
+        state.put("cooldownKillerId", null);
+        state.put("cooldownTrialsLeft", 0);
+
+        // Streak State
+        state.put("currentStreakKillerId", null);
         state.put("consecutiveWins", 0);
-        state.put("lastWonKillerId", null);
 
         season.setVariantState(state);
     }
 
-    // --- VALIDATE ---
+    // --- STEP 2: VALIDATE ---
     @Override
-    @SuppressWarnings("unchecked")
     public void validateTrialStart(Season season, SeasonRoster killerRoster) {
+        Map<String, Object> state = season.getVariantState();
+
         if (killerRoster.getStatus() == SeasonRoster.RosterStatus.DEAD) {
             throw new GameRuleViolationException("This killer is dead and cannot be played.");
         }
@@ -51,138 +59,167 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
             throw new GameRuleViolationException("This killer was sold and cannot be played.");
         }
 
-        Map<String, Object> state = season.getVariantState();
+        String cooldownKillerId = (String) state.get("cooldownKillerId");
+        if (cooldownKillerId != null && cooldownKillerId.equals(killerRoster.getKiller().getId().toString())) {
+            throw new GameRuleViolationException("This killer is currently on cooldown.");
+        }
+
         int balance = (int) state.getOrDefault("balance", 0);
-
-        // Check Cooldowns
-        // Check Cooldowns (Bypass if they only have 1 killer left)
-        long availableKillersCount = season.getRosters().stream()
-                .filter(r -> r.getStatus() == SeasonRoster.RosterStatus.AVAILABLE)
-                .count();
-
-        if (availableKillersCount > 1) {
-            Map<String, Integer> cooldowns = (Map<String, Integer>) state.get("cooldowns");
-            String killerIdStr = killerRoster.getKiller().getId().toString();
-
-            if (cooldowns != null && cooldowns.getOrDefault(killerIdStr, 0) > 0) {
-                throw new GameRuleViolationException("This killer is on cooldown for " + cooldowns.get(killerIdStr) + " more trial(s).");
-            }
-        }
-
-        // Financial Validation: Cannot start if negative, or if they can't afford THIS killer
-        int lowestKillerCost = killerRepo.findAll().stream().mapToInt(Killer::getCost).min().orElse(0);
-
-        if (balance < 0 || balance < lowestKillerCost) {
-            throw new GameRuleViolationException("Negative balance or insufficient funds. You must sell killers to reach at least $" + lowestKillerCost + ".");
-        }
-
-        if (balance < killerRoster.getKiller().getCost()) {
-            throw new GameRuleViolationException("You cannot afford to play " + killerRoster.getKiller().getName() + ". Pick a cheaper killer or sell someone.");
+        if (balance < 0) {
+            throw new GameRuleViolationException("You have a negative balance. You must sell a killer to afford this trial.");
         }
     }
 
-    // --- APPLY RESULTS ---
+    // --- STEP 3: APPLY RESULTS ---
     @Override
-    @SuppressWarnings("unchecked")
     public void applyTrialResults(Season season, SeasonRoster killerRoster, Trial trial, TrialSubmitRequest request) {
         Map<String, Object> state = season.getVariantState();
-        int balance = (int) state.getOrDefault("balance", 0);
         String currentKillerId = killerRoster.getKiller().getId().toString();
 
-        // 1. PERMADEATH (Gate Escape = Dead)
+        // 1. DETERMINE WIN / LOSS & PERMADEATH
         boolean gateEscape = request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.ESCAPED);
+        long kills = request.survivorOutcomes().stream()
+                .filter(o -> o == TrialSurvivor.SurvivorOutcome.KILLED || o == TrialSurvivor.SurvivorOutcome.SACRIFICED)
+                .count();
+
+        boolean isWin = (kills >= 3) && !gateEscape;
+
         if (gateEscape) {
             killerRoster.setStatus(SeasonRoster.RosterStatus.DEAD);
         }
 
-        // CALCULATE COSTS
-        int totalCost = killerRoster.getKiller().getCost(); // Base cost to play the killer
-
-        if (request.perkIds() != null && !request.perkIds().isEmpty()) {
-            List<Perk> equippedPerks = perkRepo.findAllById(request.perkIds());
-            totalCost += equippedPerks.stream().mapToInt(Perk::getCost).sum();
+        // 2. PROCESS COOLDOWN DECREMENT
+        int cooldownTrialsLeft = (int) state.getOrDefault("cooldownTrialsLeft", 0);
+        if (cooldownTrialsLeft > 0) {
+            cooldownTrialsLeft--;
+            if (cooldownTrialsLeft == 0) {
+                state.put("cooldownKillerId", null);
+            }
+            state.put("cooldownTrialsLeft", cooldownTrialsLeft);
         }
 
-        if (request.addOnIds() != null && !request.addOnIds().isEmpty()) {
-            List<AddOn> equippedAddOns = addOnRepo.findAllById(request.addOnIds());
-            totalCost += equippedAddOns.stream().mapToInt(AddOn::getCost).sum();
-        }
+        // 3. PROCESS WIN STREAK & NEW COOLDOWNS
+        String streakKillerId = (String) state.get("currentStreakKillerId");
+        int consecutiveWins = (int) state.getOrDefault("consecutiveWins", 0);
 
-        // CALCULATE INCOME & PENALTIES
-        int trialIncome = 0;
-        if (request.kills() == 4 && request.gensLeft() == 5) trialIncome += 5;
-        if (request.kills() == 4 && request.gensLeft() == 4) trialIncome += 4;
-        if (request.closedHatch()) trialIncome += 2;
-
-        if (request.genBeforeHook()) trialIncome -= 3;
-        if (request.lastGenCompleted()) trialIncome -= 2;
-        if (request.gateOpened()) trialIncome -= 5;
-        if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) trialIncome -= 2;
-
-        // Apply net change to balance
-        int newBalance = balance + trialIncome - totalCost;
-        state.put("balance", newBalance);
-
-        // COOLDOWN MANAGEMENT (Triggered by Wins)
-        long kills = request.survivorOutcomes().stream()
-                .filter(o -> o == TrialSurvivor.SurvivorOutcome.KILLED || o == TrialSurvivor.SurvivorOutcome.SACRIFICED || o == TrialSurvivor.SurvivorOutcome.DISCONNECTED)
-                .count();
-        boolean isWin = (kills >= 3) && !gateEscape;
-
-        Map<String, Integer> cooldowns = (Map<String, Integer>) state.get("cooldowns");
-
-        // Reduce all active cooldowns by 1
-        cooldowns.entrySet().removeIf(entry -> {
-            int newCooldown = entry.getValue() - 1;
-            entry.setValue(newCooldown);
-            return newCooldown <= 0;
-        });
-
-        String lastWonId = (String) state.get("lastWonKillerId");
-        int consecutiveWins = (int) state.get("consecutiveWins");
-
-        if (isWin) {
-            if (currentKillerId.equals(lastWonId)) {
+        if (isWin && !gateEscape) {
+            if (currentKillerId.equals(streakKillerId)) {
                 consecutiveWins++;
-                if (consecutiveWins >= 2) {
-                    cooldowns.put(currentKillerId, 2); // 2 consecutive trials cooldown
-                    consecutiveWins = 0;
-                    lastWonId = null;
-                }
             } else {
-                lastWonId = currentKillerId;
+                streakKillerId = currentKillerId;
                 consecutiveWins = 1;
             }
+
+            if (consecutiveWins >= 2) {
+                // Check if they have more than 1 living/unsold killer left
+                long aliveKillers = season.getRosters().stream()
+                        .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                        .count();
+
+                if (aliveKillers > 1) {
+                    state.put("cooldownKillerId", currentKillerId);
+                    state.put("cooldownTrialsLeft", 2);
+                }
+                consecutiveWins = 0;
+                streakKillerId = null;
+            }
         } else {
-            // They lost, reset the win streak
+            // Loss resets the streak
             consecutiveWins = 0;
-            lastWonId = null;
+            streakKillerId = null;
         }
 
-        state.put("cooldowns", cooldowns);
+        state.put("currentStreakKillerId", streakKillerId);
         state.put("consecutiveWins", consecutiveWins);
-        state.put("lastWonKillerId", lastWonId);
+
+        // 4. THE ECONOMY: EXPENSES
+        int loadoutCost = killerRoster.getKiller().getCost();
+        loadoutCost += trial.getPerks().stream().mapToInt(Perk::getCost).sum();
+        loadoutCost += trial.getAddOns().stream().mapToInt(AddOn::getCost).sum();
+
+        // 5. THE ECONOMY: BONUSES & PENALTIES
+        int earnings = 0;
+        int penalties = 0;
+
+        // Bonuses
+        if (request.kills() != null && request.gensLeft() != null) {
+            if (request.kills() == 4 && request.gensLeft() == 5) earnings += 5;
+            else if (request.kills() == 4 && request.gensLeft() == 4) earnings += 4;
+        }
+        if (request.closedHatch() != null && request.closedHatch()) earnings += 2;
+
+        // Penalties
+        if (request.genBeforeHook() != null && request.genBeforeHook()) penalties += 3;
+        if (request.lastGenCompleted() != null && request.lastGenCompleted()) penalties += 4;
+        if (request.gateOpened() != null && request.gateOpened()) penalties += 5;
+        if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) penalties += 2;
+
+        // Apply to Balance
+        int balance = (int) state.getOrDefault("balance", 20);
+        balance = balance + earnings - penalties - loadoutCost;
+        state.put("balance", balance);
+
         season.setVariantState(state);
+
+        // 6. MAP SURVIVORS
+        List<TrialSurvivor> trialSurvivors = request.survivorOutcomes().stream().map(outcome -> {
+            TrialSurvivor survivor = new TrialSurvivor();
+            survivor.setTrial(trial);
+            survivor.setOutcome(outcome);
+            return survivor;
+        }).collect(Collectors.toList());
+
+        trial.setSurvivors(trialSurvivors);
+
+        // 7. PIP & GRADE MATH
+        String currentGrade = season.getCurrentGrade() != null ? season.getCurrentGrade().name() : "ASH_IV";
+        int currentPips = season.getCurrentPips() != null ? season.getCurrentPips() : 0;
+        int pipChange = request.pipProgression() != null ? request.pipProgression() : 0;
+
+        int newPips = currentPips + pipChange;
+        int gradeIndex = GRADE_PROGRESSION.indexOf(currentGrade);
+
+        while (gradeIndex < GRADE_PROGRESSION.size() - 1 && newPips >= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex))) {
+            newPips -= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex));
+            gradeIndex++;
+        }
+
+        if (newPips < 0) {
+            newPips = 0;
+        }
+
+        String newGradeName = GRADE_PROGRESSION.get(gradeIndex);
+        season.setCurrentGrade(GradeRule.Grade.valueOf(newGradeName));
+        season.setCurrentPips(newPips);
+        trial.setResultingGrade(GradeRule.Grade.valueOf(newGradeName));
+        trial.setResultingPips(newPips);
     }
 
-    // --- END GAME ---
-    // TODO: Properly write the end of season for this variant
+    // --- STEP 4: END GAME ---
     @Override
     public Season.SeasonStatus isSeasonOver(Season season) {
-        // Success Condition: Reached Iridescent 1
+        Map<String, Object> state = season.getVariantState();
+        int balance = (int) state.getOrDefault("balance", 0);
+
+        // Success Condition
         if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
             return Season.SeasonStatus.COMPLETED;
         }
 
-        // Failure Condition: All killers are dead
-        boolean allDead = season.getRosters().stream()
-                .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
+        // Failure Condition 1: Entire Roster is Dead/Sold
+        long aliveKillers = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                .count();
 
-        if (allDead) {
+        if (aliveKillers == 0) {
             return Season.SeasonStatus.FAILED_ROSTER;
         }
 
-        // If neither condition is met, the season continues
+        // Failure Condition 2: Bankrupt and Cannot Sell
+        if (balance < 0 && aliveKillers == 0) {
+            return Season.SeasonStatus.FAILED_ROSTER;
+        }
+
         return Season.SeasonStatus.ACTIVE;
     }
 }

@@ -52,6 +52,21 @@ public class SeasonController {
         }
     }
 
+    @PostMapping("/{seasonId}/fail")
+    public ResponseEntity<Season> failSeasonDueToTime(
+            @PathVariable UUID seasonId,
+            @AuthenticationPrincipal OAuth2User principal) {
+
+        Player player = playerService.getOrCreatePlayer(
+                principal.getName(),
+                principal.getAttribute("email"),
+                principal.getAttribute("name")
+        );
+
+        Season failedSeason = seasonService.failSeason(player.getId(), seasonId);
+        return ResponseEntity.ok(failedSeason);
+    }
+
     @GetMapping("/variant/{variantType}")
     public ResponseEntity<List<Season>> getSeasonsByVariant(
             @PathVariable String variantType,
