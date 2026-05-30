@@ -141,18 +141,29 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
         int earnings = 0;
         int penalties = 0;
 
+        // --- Kills for Money ---
+        if (request.kills() != null) {
+            if (request.kills() == 3) {
+                earnings += 10;
+            } else if (request.kills() == 4) {
+                earnings += 20;
+            }
+        }
+
         // Bonuses
         if (request.kills() != null && request.gensLeft() != null) {
-            if (request.kills() == 4 && request.gensLeft() == 5) earnings += 5;
-            else if (request.kills() == 4 && request.gensLeft() == 4) earnings += 4;
+            if (request.kills() == 4 && request.gensLeft() == 5) {
+                earnings += 4;
+            } else if (request.kills() == 4 && request.gensLeft() == 4) {
+                earnings += 2;
+            }
         }
-        if (request.closedHatch() != null && request.closedHatch()) earnings += 2;
 
         // Penalties
-        if (request.genBeforeHook() != null && request.genBeforeHook()) penalties += 3;
-        if (request.lastGenCompleted() != null && request.lastGenCompleted()) penalties += 4;
+        if (request.genBeforeHook() != null && request.genBeforeHook()) penalties += 2;
+        if (request.lastGenCompleted() != null && request.lastGenCompleted()) penalties += 2;
         if (request.gateOpened() != null && request.gateOpened()) penalties += 5;
-        if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) penalties += 2;
+        if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) penalties += 4;
 
         // Apply to Balance
         int balance = (int) state.getOrDefault("balance", 20);

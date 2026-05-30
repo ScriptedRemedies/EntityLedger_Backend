@@ -329,6 +329,9 @@ public class SeasonService {
 
         // 2. Update the specific roster item
         rosterEntry.setStatus(SeasonRoster.RosterStatus.SOLD);
+        rosterRepo.save(rosterEntry);
+
+        season = seasonRepo.findById(seasonId).get();
 
         // 3. --- COOLDOWN WAIVER CHECK ---
         long remainingAlive = season.getRosters().stream()
@@ -346,7 +349,7 @@ public class SeasonService {
                 .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
                 .anyMatch(r -> r.getKiller().getCost() <= newBalance);
 
-        if (!canAffordAnyone) {
+        if (remainingAlive == 0) {
             season.setStatus(Season.SeasonStatus.FAILED_ROSTER); // The run is dead
             season.setEndDate(LocalDateTime.now());
         }
