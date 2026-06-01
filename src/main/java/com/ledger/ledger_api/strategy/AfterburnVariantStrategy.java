@@ -185,23 +185,30 @@ public class AfterburnVariantStrategy implements VariantStrategy {
     }
 
     // --- STEP 4: END GAME ---
-    // TODO: Properly write the end of season for this variant
     @Override
     public Season.SeasonStatus isSeasonOver(Season season) {
-        // Success Condition: Reached Iridescent 1
+        Map<String, Object> state = season.getVariantState();
+        int balance = (int) state.getOrDefault("balance", 0);
+
+        // Success Condition
         if (season.getCurrentGrade() != null && season.getCurrentGrade().name().equals("IRIDESCENT_I")) {
             return Season.SeasonStatus.COMPLETED;
         }
 
-        // Failure Condition: All killers are dead
-        boolean allDead = season.getRosters().stream()
-                .allMatch(roster -> roster.getStatus() == SeasonRoster.RosterStatus.DEAD);
+        // Failure Condition 1: Entire Roster is Dead/Sold
+        long aliveKillers = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                .count();
 
-        if (allDead) {
+        if (aliveKillers == 0) {
             return Season.SeasonStatus.FAILED_ROSTER;
         }
 
-        // If neither condition is met, the season continues
+        // Failure Condition 2: Bankrupt and Cannot Sell
+        if (balance < 0 && aliveKillers == 0) {
+            return Season.SeasonStatus.FAILED_ROSTER;
+        }
+
         return Season.SeasonStatus.ACTIVE;
     }
 }
