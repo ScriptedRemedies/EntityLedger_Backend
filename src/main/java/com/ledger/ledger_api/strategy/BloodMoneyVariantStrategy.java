@@ -129,6 +129,16 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
             streakKillerId = null;
         }
 
+        long remainingAlive = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                .count();
+
+        // If the trial resulted in only 1 killer remaining, wipe the active cooldown
+        if (remainingAlive <= 1) {
+            state.put("cooldownKillerId", null);
+            state.put("cooldownTrialsLeft", 0);
+        }
+
         state.put("currentStreakKillerId", streakKillerId);
         state.put("consecutiveWins", consecutiveWins);
 

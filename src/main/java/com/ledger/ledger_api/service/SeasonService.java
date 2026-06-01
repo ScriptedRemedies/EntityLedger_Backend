@@ -315,7 +315,7 @@ public class SeasonService {
             throw new IllegalStateException("You do not have permission to modify this season.");
         }
 
-        if (season.getVariantType() != Season.VariantType.BLOOD_MONEY) {
+        if (season.getVariantType() != Season.VariantType.BLOOD_MONEY && season.getVariantType() != Season.VariantType.AFTERBURN) {
             throw new IllegalStateException("You can only sell killers in the Blood Money variant.");
         }
 
@@ -354,6 +354,7 @@ public class SeasonService {
         if (remainingAlive <= 1) {
             state.put("cooldownKillerId", null);
             state.put("cooldownTrialsLeft", 0);
+            state.put("cooldowns", new java.util.HashMap<String, Integer>());
         }
 
         int newBalance = currentBalance + sellPrice;

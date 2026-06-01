@@ -10,12 +10,28 @@ import com.ledger.ledger_api.repository.PerkRepository;
 import com.ledger.ledger_api.repository.SeasonRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component("AFTERBURN")
 public class AfterburnVariantStrategy implements VariantStrategy {
+
+    private static final List<String> GRADE_PROGRESSION = Arrays.asList(
+            "ASH_IV", "ASH_III", "ASH_II", "ASH_I",
+            "BRONZE_IV", "BRONZE_III", "BRONZE_II", "BRONZE_I",
+            "SILVER_IV", "SILVER_III", "SILVER_II", "SILVER_I",
+            "GOLD_IV", "GOLD_III", "GOLD_II", "GOLD_I",
+            "IRIDESCENT_IV", "IRIDESCENT_III", "IRIDESCENT_II", "IRIDESCENT_I"
+    );
+
+    private int getMaxPipsForGrade(String grade) {
+        if (grade.startsWith("ASH")) return 3;
+        if (grade.startsWith("BRONZE")) return 4;
+        return 5;
+    }
 
     private final PerkRepository perkRepo;
     private final AddOnRepository addOnRepo;
@@ -178,10 +194,52 @@ public class AfterburnVariantStrategy implements VariantStrategy {
             lastWonId = null;
         }
 
+        long remainingAlive = season.getRosters().stream()
+                .filter(r -> r.getStatus() != SeasonRoster.RosterStatus.DEAD && r.getStatus() != SeasonRoster.RosterStatus.SOLD)
+                .count();
+
+        // If the trial resulted in only 1 killer remaining, wipe all active cooldowns
+        if (remainingAlive <= 1) {
+            cooldowns.clear();
+        }
+
         state.put("cooldowns", cooldowns);
         state.put("consecutiveWins", consecutiveWins);
         state.put("lastWonKillerId", lastWonId);
         season.setVariantState(state);
+
+        // --- 5. MAP SURVIVORS ---
+        List<TrialSurvivor> trialSurvivors = request.survivorOutcomes().stream().map(outcome -> {
+            TrialSurvivor survivor = new TrialSurvivor();
+            survivor.setTrial(trial);
+            survivor.setOutcome(outcome);
+            return survivor;
+        }).collect(Collectors.toList());
+
+        trial.setSurvivors(trialSurvivors);
+
+        // --- 6. PIP & GRADE MATH ---
+        String currentGrade = season.getCurrentGrade() != null ? season.getCurrentGrade().name() : "ASH_IV";
+        int currentPips = season.getCurrentPips() != null ? season.getCurrentPips() : 0;
+        int pipChange = request.pipProgression() != null ? request.pipProgression() : 0;
+
+        int newPips = currentPips + pipChange;
+        int gradeIndex = GRADE_PROGRESSION.indexOf(currentGrade);
+
+        while (gradeIndex < GRADE_PROGRESSION.size() - 1 && newPips >= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex))) {
+            newPips -= getMaxPipsForGrade(GRADE_PROGRESSION.get(gradeIndex));
+            gradeIndex++;
+        }
+
+        if (newPips < 0) {
+            newPips = 0;
+        }
+
+        String newGradeName = GRADE_PROGRESSION.get(gradeIndex);
+        season.setCurrentGrade(GradeRule.Grade.valueOf(newGradeName));
+        season.setCurrentPips(newPips);
+        trial.setResultingGrade(GradeRule.Grade.valueOf(newGradeName));
+        trial.setResultingPips(newPips);
     }
 
     // --- STEP 4: END GAME ---
