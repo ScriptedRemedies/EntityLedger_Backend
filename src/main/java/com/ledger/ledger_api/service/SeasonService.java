@@ -84,17 +84,29 @@ public class SeasonService {
 
         // 4. Generate or Inherit the starting roster
         if (season.getInheritedSeasonId() != null) {
-            // AFTERBURN: Copy the exact roster statuses from the previous season
+            // AFTERBURN: Copy ONLY the AVAILABLE killers from the previous season
             Season inheritedSeason = seasonRepo.findById(season.getInheritedSeasonId())
                     .orElseThrow(() -> new ResourceNotFoundException("Inherited season not found"));
 
+            List <String> deadAndSoldNames = new ArrayList<>();
+
             for (SeasonRoster oldRoster : inheritedSeason.getRosters()) {
-                SeasonRoster rosterEntry = new SeasonRoster();
-                rosterEntry.setSeason(season);
-                rosterEntry.setKiller(oldRoster.getKiller());
-                rosterEntry.setStatus(oldRoster.getStatus()); // Copies DEAD, SOLD, or AVAILABLE
-                rosterRepo.save(rosterEntry);
+                // If they are DEAD or SOLD, they do not make it into the new season
+                if (oldRoster.getStatus() == SeasonRoster.RosterStatus.AVAILABLE) {
+                    SeasonRoster rosterEntry = new SeasonRoster();
+                    rosterEntry.setSeason(season);
+                    rosterEntry.setKiller(oldRoster.getKiller());
+                    rosterEntry.setStatus(SeasonRoster.RosterStatus.AVAILABLE);
+                    rosterRepo.save(rosterEntry);
+                } else {
+                    deadAndSoldNames.add(oldRoster.getKiller().getName());
+                }
             }
+
+            Map<String, Object> state = season.getVariantState();
+            state.put("deadAndSoldKillerNames", deadAndSoldNames);
+            season.setVariantState(state);
+
         } else {
             // STANDARD/BLOOD MONEY/ETC: Fresh roster of all killers
             if (request.unlockedKillerIds() == null || request.unlockedKillerIds().isEmpty()) {

@@ -123,13 +123,22 @@ public class AfterburnVariantStrategy implements VariantStrategy {
 
         // 3. CALCULATE INCOME & PENALTIES
         int trialIncome = 0;
-        if (request.kills() == 4 && request.gensLeft() == 5) trialIncome += 5;
-        if (request.kills() == 4 && request.gensLeft() == 4) trialIncome += 4;
-        if (request.closedHatch()) trialIncome += 2;
 
-        if (request.genBeforeHook()) trialIncome -= 3;
-        if (request.lastGenCompleted()) trialIncome -= 2;
-        if (request.gateOpened()) trialIncome -= 5;
+        // Bonus Payouts
+        if (request.kills() != null && request.gensLeft() != null) {
+            if (request.kills() == 4 && request.gensLeft() == 5) trialIncome += 6;
+            if (request.kills() == 4 && request.gensLeft() == 4) trialIncome += 4;
+            if (request.kills() == 4 && request.gensLeft() == 3) trialIncome += 2;
+        }
+
+        // Hatch Payout
+        if (request.closedHatch() != null && request.closedHatch()) {
+            trialIncome += 5;
+        }
+
+        if (request.genBeforeHook() != null && request.genBeforeHook()) trialIncome -= 3;
+        if (request.lastGenCompleted() != null && request.lastGenCompleted()) trialIncome -= 2;
+        if (request.gateOpened() != null && request.gateOpened()) trialIncome -= 5;
         if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) trialIncome -= 2;
 
         int newBalance = balance + trialIncome - totalCost;
@@ -156,7 +165,7 @@ public class AfterburnVariantStrategy implements VariantStrategy {
             if (currentKillerId.equals(lastWonId)) {
                 consecutiveWins++;
                 if (consecutiveWins >= 2) {
-                    cooldowns.put(currentKillerId, 2);
+                    cooldowns.put(currentKillerId, 3);
                     consecutiveWins = 0;
                     lastWonId = null;
                 }
