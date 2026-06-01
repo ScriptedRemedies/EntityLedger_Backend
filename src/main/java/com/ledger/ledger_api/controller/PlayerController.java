@@ -40,4 +40,10 @@ public class PlayerController {
     public ResponseEntity<List<Player>> getAllPlayers() {
         return ResponseEntity.ok(playerService.getAllPlayers());
     }
+
+    // Tiny endpoint that only keeps the session active with UI interaction
+    @GetMapping("/ping")
+    public ResponseEntity<Void> pingSession() {
+        return ResponseEntity.ok().build();
+    }
 }
