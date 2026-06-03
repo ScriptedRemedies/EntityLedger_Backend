@@ -217,91 +217,190 @@ public class SeasonService {
             allTrialsForVariant.addAll(trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(season.getId()));
         }
 
-        // Crunch the numbers!
-        return calculateVariantStats(allTrialsForVariant);
+        return calculateVariantStats(variantSeasons, allTrialsForVariant);
     }
-    private VariantStatsResponse calculateVariantStats(List<Trial> trials) {
+
+    private VariantStatsResponse calculateVariantStats(List<Season> seasons, List<Trial> trials) {
         int matches = trials.size();
+
+        // 1. Safe Empty State Return
         if (matches == 0) {
-            return new VariantStatsResponse(0, 0.0, 0.0, 0, 0.0, 0.0, 0, List.of(), List.of());
+            return new VariantStatsResponse(
+                    0, 0.0, 0.0, 0, 0.0, 0.0, 0,
+                    List.of(), List.of(), List.of(), List.of(),
+                    new VariantStatsResponse.FinancialExtremes(
+                            new VariantStatsResponse.TrialRecord(0, 0),
+                            new VariantStatsResponse.TrialRecord(0, 0)
+                    ), 0, 0, null, 0, 0, 0.0
+            );
         }
 
-        int totalKills = 0;
-        int fourKCount = 0;
-        int pipSum = 0;
-        int lossCount = 0;
-        int hatchCount = 0;
-        int twoToThreeKillsWithGates = 0;
+        // 2. Base Tracking Variables
+        int totalKills = 0, fourKCount = 0, pipSum = 0, lossCount = 0, hatchCount = 0, twoToThreeKillsWithGates = 0;
+        int totalRevenue = 0, totalDebt = 0;
+        int maxWinAmount = 0, maxWinTrialNum = 0;
+        int maxLossAmount = 0, maxLossTrialNum = 0;
+        int mulligansBurned = 0, flawlessCount = 0;
+        int totalPerkCost = 0, totalPerksEquipped = 0;
 
         Map<String, Integer> perkCounts = new HashMap<>();
         Map<String, Integer> iriEmblemCounts = new HashMap<>();
+        iriEmblemCounts.put("CHASER", 0); iriEmblemCounts.put("DEVOUT", 0);
+        iriEmblemCounts.put("GATEKEEPER", 0); iriEmblemCounts.put("MALICIOUS", 0);
 
-        // Ensure these keys always exist so the UI maps them correctly
-        iriEmblemCounts.put("CHASER", 0);
-        iriEmblemCounts.put("DEVOUT", 0);
-        iriEmblemCounts.put("GATEKEEPER", 0);
-        iriEmblemCounts.put("MALICIOUS", 0);
+        // Tracker for Killer-specific awards and stats
+        class KillerAgg {
+            int matches = 0, kills = 0, pips = 0, fourKs = 0, losses = 0, gateEscapes = 0, hatchEscapes = 0;
+        }
+        Map<String, KillerAgg> killerStats = new HashMap<>();
 
+        // 3. THE MASTER LOOP
         for (Trial t : trials) {
             pipSum += t.getPipProgression() != null ? t.getPipProgression() : 0;
 
             int killsInTrial = 0;
             boolean gateEscape = false;
             boolean hatchEscape = false;
+            int gates = 0, hatches = 0;
 
             for (TrialSurvivor s : t.getSurvivors()) {
                 String outcome = s.getOutcome().name();
-                if (outcome.equals("KILLED") || outcome.equals("SACRIFICED")) {
+                if (outcome.equals("KILLED") || outcome.equals("SACRIFICED") || outcome.equals("DISCONNECTED")) {
                     killsInTrial++;
                 } else if (outcome.equals("ESCAPED")) {
-                    gateEscape = true;
+                    gateEscape = true; gates++;
                 } else if (outcome.equals("HATCH_ESCAPE")) {
-                    hatchEscape = true;
+                    hatchEscape = true; hatches++;
                 }
             }
 
             totalKills += killsInTrial;
-
             if (killsInTrial == 4) fourKCount++;
-            if (gateEscape) lossCount++; // Loss = Entity Displeased / Survivor escaped via gate
+            if (killsInTrial <= 1) lossCount++;
             if (hatchEscape) hatchCount++;
             if ((killsInTrial == 2 || killsInTrial == 3) && gateEscape) twoToThreeKillsWithGates++;
 
-            // Tally Perks
-            t.getPerks().forEach(p -> perkCounts.put(p.getName(), perkCounts.getOrDefault(p.getName(), 0) + 1));
+            // --- FINANCIAL MATH ---
+            int netIncome = t.getNetIncome() != null ? t.getNetIncome() : 0;
+            if (netIncome > 0) {
+                totalRevenue += netIncome;
+                if (netIncome > maxWinAmount) { maxWinAmount = netIncome; maxWinTrialNum = t.getTrialNumber(); }
+            } else if (netIncome < 0) {
+                totalDebt += Math.abs(netIncome);
+                if (netIncome < maxLossAmount) { maxLossAmount = netIncome; maxLossTrialNum = t.getTrialNumber(); }
+            }
 
-            // Tally Iridescent Emblems
-            t.getEmblems().stream()
-                    .filter(e -> e.getType().name().equals("IRIDESCENT"))
+            // --- IRON MAN MATH ---
+            if (Boolean.TRUE.equals(t.getBurnedMulligan())) mulligansBurned++;
+            if (Boolean.TRUE.equals(t.getFlawlessTrial())) flawlessCount++;
+
+            // --- PERKS & EMBLEMS ---
+            for (Perk p : t.getPerks()) {
+                perkCounts.put(p.getName(), perkCounts.getOrDefault(p.getName(), 0) + 1);
+                totalPerkCost += p.getCost() != null ? p.getCost() : 0;
+                totalPerksEquipped++;
+            }
+
+            t.getEmblems().stream().filter(e -> e.getType().name().equals("IRIDESCENT"))
                     .forEach(e -> iriEmblemCounts.put(e.getCategory().name(), iriEmblemCounts.get(e.getCategory().name()) + 1));
+
+            // --- ROSTER AGGREGATION ---
+            String kName = t.getKiller().getName();
+            killerStats.putIfAbsent(kName, new KillerAgg());
+            KillerAgg agg = killerStats.get(kName);
+
+            agg.matches++;
+            agg.kills += killsInTrial;
+            agg.pips += (t.getPipProgression() != null ? t.getPipProgression() : 0);
+            if (killsInTrial == 4) agg.fourKs++;
+            if (killsInTrial <= 1) agg.losses++;
+            agg.gateEscapes += gates;
+            agg.hatchEscapes += hatches;
         }
 
         // Helper to format percentages
         var formatPct = (java.util.function.BiFunction<Integer, Integer, Double>) (count, total) ->
                 Math.round(((double) count / total) * 1000.0) / 10.0;
 
-        // Map Top 4 Perks
         List<VariantStatsResponse.PerkStat> topPerks = perkCounts.entrySet().stream()
-                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                .limit(4)
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue())).limit(4)
                 .map(e -> new VariantStatsResponse.PerkStat(e.getKey(), formatPct.apply(e.getValue(), matches)))
                 .toList();
 
-        // Map Emblems
         List<VariantStatsResponse.EmblemStat> emblems = iriEmblemCounts.entrySet().stream()
-                .map(e -> new VariantStatsResponse.EmblemStat(e.getKey(), formatPct.apply(e.getValue(), matches)))
+                .map(e -> new VariantStatsResponse.EmblemStat(e.getKey(), formatPct.apply(e.getValue(), matches))).toList();
+
+        // 4. --- AWARDS CALCULATION ---
+        List<VariantStatsResponse.RosterAward> awards = new ArrayList<>();
+        var sortedKillers = killerStats.entrySet().stream()
+                .sorted((a, b) -> {
+                    if (b.getValue().pips != a.getValue().pips) return b.getValue().pips - a.getValue().pips;
+                    return Double.compare((double)b.getValue().kills/b.getValue().matches, (double)a.getValue().kills/a.getValue().matches);
+                }).toList();
+
+        if (!sortedKillers.isEmpty()) {
+            var mvp = sortedKillers.get(0);
+            awards.add(new VariantStatsResponse.RosterAward("MOST VALUABLE", mvp.getKey(),
+                    (mvp.getValue().pips > 0 ? "+" : "") + mvp.getValue().pips + " Pips", "positive"));
+
+            var executioner = killerStats.entrySet().stream().filter(e -> e.getValue().fourKs > 0)
+                    .max(java.util.Comparator.comparingInt(e -> e.getValue().fourKs));
+            executioner.ifPresent(e -> awards.add(new VariantStatsResponse.RosterAward("THE EXECUTIONER", e.getKey(), e.getValue().fourKs + " Total 4Ks", "positive")));
+
+            var merciful = killerStats.entrySet().stream().filter(e -> e.getValue().hatchEscapes > 0)
+                    .max(java.util.Comparator.comparingInt(e -> e.getValue().hatchEscapes));
+            merciful.ifPresent(e -> awards.add(new VariantStatsResponse.RosterAward("THE MERCIFUL", e.getKey(), e.getValue().hatchEscapes + " Hatch Escapes", "positive")));
+
+            var choker = killerStats.entrySet().stream().filter(e -> e.getValue().gateEscapes > 0)
+                    .max(java.util.Comparator.comparingInt(e -> e.getValue().gateEscapes));
+            choker.ifPresent(e -> awards.add(new VariantStatsResponse.RosterAward("ENDGAME CHOKER", e.getKey(), e.getValue().gateEscapes + " Gate Escapes", "negative")));
+
+            if (sortedKillers.size() > 1) {
+                var lvp = sortedKillers.get(sortedKillers.size()-1);
+                if (!lvp.getKey().equals(mvp.getKey()) && lvp.getValue().losses > 0) {
+                    awards.add(new VariantStatsResponse.RosterAward("WEAKEST LINK", lvp.getKey(),
+                            (lvp.getValue().pips > 0 ? "+" : "") + lvp.getValue().pips + " Pips", "negative"));
+                }
+            }
+        }
+
+        // 5. --- ADEPT: TOP KILLERS ---
+        List<VariantStatsResponse.KillerStat> topKillers = killerStats.entrySet().stream()
+                .sorted((a, b) -> b.getValue().matches - a.getValue().matches).limit(4)
+                .map(e -> new VariantStatsResponse.KillerStat(e.getKey(), formatPct.apply(e.getValue().matches, matches), formatPct.apply(e.getValue().kills, e.getValue().matches * 4)))
                 .toList();
 
+        // 6. --- FINANCIAL EXTREMES ---
+        VariantStatsResponse.TrialRecord biggestWin = new VariantStatsResponse.TrialRecord(maxWinAmount, maxWinTrialNum);
+        VariantStatsResponse.TrialRecord biggestLoss = new VariantStatsResponse.TrialRecord(maxLossAmount, maxLossTrialNum);
+        VariantStatsResponse.FinancialExtremes financials = new VariantStatsResponse.FinancialExtremes(biggestWin, biggestLoss);
+
+        // 7. --- TIME CALCULATIONS ---
+        long totalMinutes = 0;
+        int completedSeasons = 0;
+
+        for (Season s : seasons) {
+            if (s.getEndDate() != null && s.getStartDate() != null) {
+                totalMinutes += java.time.Duration.between(s.getStartDate(), s.getEndDate()).toMinutes();
+                completedSeasons++;
+            }
+        }
+
+        String avgTime = null;
+        if (completedSeasons > 0) {
+            long avg = totalMinutes / completedSeasons;
+            avgTime = String.format("%02d:%02d", avg / 60, avg % 60);
+        }
+
+        Double avgPerkVal = totalPerksEquipped > 0 ? Math.round(((double)totalPerkCost / totalPerksEquipped) * 10.0) / 10.0 : 0.0;
+
+        // 8. --- THE MASTER RETURN ---
         return new VariantStatsResponse(
-                matches,
-                formatPct.apply(totalKills, matches * 4), // Kill rate is based on total survivors faced
-                formatPct.apply(fourKCount, matches),
-                pipSum,
-                formatPct.apply(lossCount, matches),
-                formatPct.apply(hatchCount, matches),
-                twoToThreeKillsWithGates,
-                topPerks,
-                emblems
+                matches, formatPct.apply(totalKills, matches * 4), formatPct.apply(fourKCount, matches),
+                pipSum, formatPct.apply(lossCount, matches), formatPct.apply(hatchCount, matches), twoToThreeKillsWithGates,
+                topPerks, emblems,
+                awards, topKillers, financials, totalRevenue, totalDebt,
+                avgTime, mulligansBurned, flawlessCount, avgPerkVal
         );
     }
 

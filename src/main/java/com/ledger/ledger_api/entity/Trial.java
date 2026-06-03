@@ -39,6 +39,18 @@ public class Trial {
     private GradeRule.Grade resultingGrade;
     private Integer resultingPips;
 
+    @Column(name = "net_income")
+    private Integer netIncome;
+
+    @Column(name = "earned_mulligan")
+    private Boolean earnedMulligan;
+
+    @Column(name = "burned_mulligan")
+    private Boolean burnedMulligan;
+
+    @Column(name = "flawless_trial")
+    private Boolean flawlessTrial;
+
     // --- Join Tables Handled by Hibernate ---
 
     @ManyToMany

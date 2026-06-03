@@ -12,6 +12,11 @@ public record TrialSummaryResponse(
         String currentGrade,
         Integer currentPips,
 
+        Integer netIncome,
+        Boolean earnedMulligan,
+        Boolean burnedMulligan,
+        Boolean flawlessTrial,
+
         // Match these exactly to the React property names
         List<String> survivorResults,
         List<EmblemDTO> emblems,

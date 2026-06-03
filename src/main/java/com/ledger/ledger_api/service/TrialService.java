@@ -127,6 +127,10 @@ public class TrialService {
                 trial.getPipProgression(),
                 trial.getResultingGrade() != null ? trial.getResultingGrade().name() : season.getCurrentGrade().name(),
                 trial.getResultingPips() != null ? trial.getResultingPips() : season.getCurrentPips(),
+                trial.getNetIncome() != null ? trial.getNetIncome() : 0,
+                trial.getEarnedMulligan() != null ? trial.getEarnedMulligan() : false,
+                trial.getBurnedMulligan() != null ? trial.getBurnedMulligan() : false,
+                trial.getFlawlessTrial() != null ? trial.getFlawlessTrial() : false,
 
                 // Survivor Outcomes
                 trial.getSurvivors().stream().map(s -> s.getOutcome().name()).collect(Collectors.toList()),

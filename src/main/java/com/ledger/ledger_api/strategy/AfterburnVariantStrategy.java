@@ -157,7 +157,10 @@ public class AfterburnVariantStrategy implements VariantStrategy {
         if (request.gateOpened() != null && request.gateOpened()) trialIncome -= 5;
         if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) trialIncome -= 2;
 
-        int newBalance = balance + trialIncome - totalCost;
+        int netIncome = trialIncome - totalCost;
+        trial.setNetIncome(netIncome);
+
+        int newBalance = balance + netIncome;
         state.put("balance", newBalance);
 
         // 4. COOLDOWN MANAGEMENT

@@ -175,9 +175,12 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
         if (request.gateOpened() != null && request.gateOpened()) penalties += 5;
         if (request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.HATCH_ESCAPE)) penalties += 4;
 
+        int netIncome = earnings - penalties - loadoutCost;
+        trial.setNetIncome(netIncome);
+
         // Apply to Balance
         int balance = (int) state.getOrDefault("balance", 20);
-        balance = balance + earnings - penalties - loadoutCost;
+        balance = balance + netIncome;
         state.put("balance", balance);
 
         season.setVariantState(state);

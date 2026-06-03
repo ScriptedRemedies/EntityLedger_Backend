@@ -126,10 +126,14 @@ public class IronManVariantStrategy implements VariantStrategy {
         } else {
             // 2. ESCAPE PENALTY & MULLIGAN
             boolean gateEscape = request.survivorOutcomes().contains(TrialSurvivor.SurvivorOutcome.ESCAPED);
+            boolean flawless = request.kills() != null && request.kills() == 4 && request.gensLeft() != null && request.gensLeft() ==5;
+            boolean burnedMulligan = false;
+            boolean earnedMulligan = false;
 
             if (gateEscape) {
                 if (mulliganCount > 0) {
                     mulliganCount--; // Save the run, burn the token
+                    burnedMulligan = true;
                 } else {
                     runDead = true;  // No token left, run over
                 }
@@ -138,7 +142,12 @@ public class IronManVariantStrategy implements VariantStrategy {
             // 3. EARN MULLIGAN
             if (mulliganCount == 0 && request.kills() == 4 && request.gensLeft() == 5) {
                 mulliganCount = 1;
+                earnedMulligan = true;
             }
+
+            trial.setFlawlessTrial(flawless);
+            trial.setBurnedMulligan(burnedMulligan);
+            trial.setEarnedMulligan(earnedMulligan);
 
             // 4. ROSTER ROTATION MANAGEMENT
             playedKillers.add(currentKillerId);
