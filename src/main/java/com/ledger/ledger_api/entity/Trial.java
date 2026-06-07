@@ -51,6 +51,15 @@ public class Trial {
     @Column(name = "flawless_trial")
     private Boolean flawlessTrial;
 
+    @Column(name = "running_balance")
+    private Integer runningBalance;
+
+    @Column(name = "used_re_roll_token")
+    private Boolean usedReRollToken;
+
+    @Column(name = "remaining_tokens")
+    private Integer remainingTokens;
+
     // --- Join Tables Handled by Hibernate ---
 
     @ManyToMany

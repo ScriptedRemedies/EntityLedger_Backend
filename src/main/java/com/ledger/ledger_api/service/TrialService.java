@@ -124,6 +124,7 @@ public class TrialService {
                 trial.getId(),
                 trial.getTrialNumber(),
                 trial.getKiller().getName(),
+                trial.getKiller().getCost(),
                 trial.getPipProgression(),
                 trial.getResultingGrade() != null ? trial.getResultingGrade().name() : season.getCurrentGrade().name(),
                 trial.getResultingPips() != null ? trial.getResultingPips() : season.getCurrentPips(),
@@ -131,6 +132,9 @@ public class TrialService {
                 trial.getEarnedMulligan() != null ? trial.getEarnedMulligan() : false,
                 trial.getBurnedMulligan() != null ? trial.getBurnedMulligan() : false,
                 trial.getFlawlessTrial() != null ? trial.getFlawlessTrial() : false,
+                trial.getRunningBalance() != null ? trial.getRunningBalance() : 0,
+                trial.getUsedReRollToken() != null ? trial.getUsedReRollToken() : false,
+                trial.getRemainingTokens() != null ? trial.getRemainingTokens() : 0,
 
                 // Survivor Outcomes
                 trial.getSurvivors().stream().map(s -> s.getOutcome().name()).collect(Collectors.toList()),
@@ -144,13 +148,15 @@ public class TrialService {
                 // Perks (Maps to icons)
                 trial.getPerks().stream().map(p -> new TrialSummaryResponse.PerkDTO(
                         p.getName(),
-                        "/assets/Perks/" + p.getName() + ".png"
+                        "/assets/Perks/" + p.getName() + ".png",
+                        p.getCost()
                 )).collect(Collectors.toList()),
 
                 // Add-ons (Maps to icons, replacing % to match your file naming convention)
                 trial.getAddOns().stream().map(a -> new TrialSummaryResponse.AddonDTO(
                         a.getName(),
-                        "/assets/Addons/" + trial.getKiller().getName() + "/" + a.getName().replace("%", "") + ".png"
+                        "/assets/Addons/" + trial.getKiller().getName() + "/" + a.getName().replace("%", "") + ".png",
+                        a.getCost()
                 )).collect(Collectors.toList()),
 
                 season.getStatus().name()

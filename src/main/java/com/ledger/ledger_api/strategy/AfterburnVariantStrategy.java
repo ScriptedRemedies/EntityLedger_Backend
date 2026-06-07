@@ -161,6 +161,7 @@ public class AfterburnVariantStrategy implements VariantStrategy {
         trial.setNetIncome(netIncome);
 
         int newBalance = balance + netIncome;
+        trial.setRunningBalance(balance);
         state.put("balance", newBalance);
 
         // 4. COOLDOWN MANAGEMENT

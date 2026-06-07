@@ -181,6 +181,7 @@ public class BloodMoneyVariantStrategy implements VariantStrategy {
         // Apply to Balance
         int balance = (int) state.getOrDefault("balance", 20);
         balance = balance + netIncome;
+        trial.setRunningBalance(balance);
         state.put("balance", balance);
 
         season.setVariantState(state);

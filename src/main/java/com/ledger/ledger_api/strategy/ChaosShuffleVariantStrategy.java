@@ -91,11 +91,14 @@ public class ChaosShuffleVariantStrategy implements VariantStrategy {
             currentTokens = Math.max(0, currentTokens - 1);
         }
 
+        trial.setUsedReRollToken(Boolean.TRUE.equals(request.usedReRollToken()));
+
         // Bonus for 4K with Gens remaining
         if (kills == 4 && request.gensLeft() != null) {
             if (request.gensLeft() == 4) currentTokens += 1;
             if (request.gensLeft() == 5) currentTokens += 2;
         }
+        trial.setRemainingTokens(currentTokens);
         state.put("reRollTokens", currentTokens);
 
         // 3. COOLDOWN TICK

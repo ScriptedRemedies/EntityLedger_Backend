@@ -7,6 +7,7 @@ public record TrialSummaryResponse(
         UUID trialId,
         Integer trialNumber,
         String killerName,
+        Integer killerCost,
         Integer pipProgression,
 
         String currentGrade,
@@ -17,6 +18,10 @@ public record TrialSummaryResponse(
         Boolean burnedMulligan,
         Boolean flawlessTrial,
 
+        Integer runningBalance,
+        Boolean usedReRollToken,
+        Integer remainingTokens,
+
         // Match these exactly to the React property names
         List<String> survivorResults,
         List<EmblemDTO> emblems,
@@ -25,6 +30,6 @@ public record TrialSummaryResponse(
         String seasonStatus
 ) {
     public record EmblemDTO(String name, String iconUrl) {}
-    public record PerkDTO(String name, String iconUrl) {}
-    public record AddonDTO(String name, String iconUrl) {}
+    public record PerkDTO(String name, String iconUrl, Integer cost) {}
+    public record AddonDTO(String name, String iconUrl, Integer cost) {}
 }
