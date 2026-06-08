@@ -173,9 +173,9 @@
   { "code":  "help_wanted", "name":  "Help Wanted", "cost": 1, "killerName": "The Animatronic"},
   { "code":  "phantom_fear", "name":  "Phantom Fear", "cost": 2, "killerName": "The Animatronic"},
 
-  { "code":  "overture_of_doom", "name":  "Overture of Doom", "cost": 1, "killerName": "The Krause"},
-  { "code":  "ravenous", "name":  "Ravenous", "cost": 2, "killerName": "The Krause"},
-  { "code":  "wandering_eye", "name":  "Wandering Eye", "cost": 1, "killerName": "The Krause"},
+  { "code":  "overture_of_doom", "name":  "Overture of Doom", "cost": 1, "killerName": "The Krasue"},
+  { "code":  "ravenous", "name":  "Ravenous", "cost": 2, "killerName": "The Krasue"},
+  { "code":  "wandering_eye", "name":  "Wandering Eye", "cost": 1, "killerName": "The Krasue"},
 
   { "code":  "hive_mind", "name":  "Hive Mind", "cost": 2, "killerName": "The First"},
   { "code":  "secret_project", "name":  "Secret Project", "cost": 2, "killerName": "The First"},

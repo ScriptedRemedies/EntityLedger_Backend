@@ -39,6 +39,6 @@
   { "code": "houndmaster","name": "The Houndmaster", "cost": 10 },
   { "code": "ghoul","name": "The Ghoul", "cost": 16 },
   { "code": "animatronic","name": "The Animatronic", "cost": 8 },
-  { "code": "krause","name": "The Krause", "cost": 14 },
+  { "code": "krasue","name": "The Krasue", "cost": 14 },
   { "code": "first","name": "The First", "cost": 8 }
 ]
