@@ -3,6 +3,7 @@ package com.ledger.ledger_api.controller;
 import com.ledger.ledger_api.dto.SeasonCreateRequest;
 import com.ledger.ledger_api.dto.SeasonDetailsResponse;
 import com.ledger.ledger_api.dto.VariantStatsResponse;
+import com.ledger.ledger_api.dto.SeasonHistoryResponse;
 import com.ledger.ledger_api.entity.Player;
 import com.ledger.ledger_api.entity.Season;
 import com.ledger.ledger_api.entity.Trial;
@@ -68,7 +69,7 @@ public class SeasonController {
     }
 
     @GetMapping("/variant/{variantType}")
-    public ResponseEntity<List<Season>> getSeasonsByVariant(
+    public ResponseEntity<List<SeasonHistoryResponse>> getSeasonsByVariant(
             @PathVariable String variantType,
             @AuthenticationPrincipal OAuth2User principal) {
 
@@ -78,7 +79,8 @@ public class SeasonController {
                 principal.getAttribute("name")
         );
 
-        List<Season> seasons = seasonService.getSeasonsByVariant(player.getId(), variantType);
+        // THE FIX: Now returns the clean DTO list
+        List<SeasonHistoryResponse> seasons = seasonService.getSeasonsByVariant(player.getId(), variantType);
 
         return ResponseEntity.ok(seasons);
     }

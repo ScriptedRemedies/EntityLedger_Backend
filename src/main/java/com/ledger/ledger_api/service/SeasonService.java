@@ -3,6 +3,7 @@ package com.ledger.ledger_api.service;
 import com.ledger.ledger_api.dto.SeasonCreateRequest;
 import com.ledger.ledger_api.dto.SeasonDetailsResponse;
 import com.ledger.ledger_api.dto.VariantStatsResponse;
+import com.ledger.ledger_api.dto.SeasonHistoryResponse;
 import com.ledger.ledger_api.entity.*;
 import com.ledger.ledger_api.exception.ActiveSeasonExistsException;
 import com.ledger.ledger_api.exception.ResourceNotFoundException;
@@ -201,9 +202,42 @@ public class SeasonService {
     // --- VARIANT HISTORY METHODS ---
 
     @Transactional(readOnly = true)
-    public List<Season> getSeasonsByVariant(UUID playerId, String variantTypeString) {
+    public List<SeasonHistoryResponse> getSeasonsByVariant(UUID playerId, String variantTypeString) {
         Season.VariantType type = Season.VariantType.valueOf(variantTypeString.toUpperCase());
-        return seasonRepo.findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(playerId, type);
+        List<Season> seasons = seasonRepo.findAllByPlayerIdAndVariantTypeOrderByStartDateDesc(playerId, type);
+
+        // Map the raw database entities to our safe, frontend-friendly DTO
+        return seasons.stream().map(season -> {
+
+            // 1. THE LAZY LOAD FIX: Eagerly fetch the rosters and map them to DTOs
+            List<SeasonDetailsResponse.RosterItemDto> rosterDtos = rosterRepo.findBySeasonId(season.getId()).stream()
+                    .map(r -> new SeasonDetailsResponse.RosterItemDto(
+                            r.getKiller().getId(), r.getKiller().getName(),
+                            r.getStatus().name(), r.getKiller().getCost()))
+                    .collect(Collectors.toList());
+
+            // 2. Identify the character for the background watermark
+            String characterName = "The Entity";
+            String characterImageUrl = "/assets/placeholder-killer.png";
+
+            // Fallback to the first available killer to represent the season card
+            var displayKiller = rosterDtos.stream()
+                    .filter(r -> r.status().equals("AVAILABLE"))
+                    .findFirst()
+                    .orElse(null);
+
+            if (displayKiller != null) {
+                characterName = displayKiller.killerName();
+                characterImageUrl = "/assets/Killer Portraits/" + displayKiller.killerName() + ".png";
+            }
+
+            // 3. Return the clean payload
+            return new SeasonHistoryResponse(
+                    season.getId(), season.getVariantType(), season.getStatus(),
+                    season.getStartDate(), season.getEndDate(), season.getCurrentGrade(),
+                    season.getCurrentPips(), rosterDtos, characterName, characterImageUrl
+            );
+        }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

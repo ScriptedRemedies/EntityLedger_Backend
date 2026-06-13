@@ -1,10 +1,11 @@
 package com.ledger.ledger_api.controller;
 
 import com.ledger.ledger_api.dto.VariantStatsResponse;
+import com.ledger.ledger_api.dto.SeasonHistoryResponse;
 import com.ledger.ledger_api.entity.Player;
-import com.ledger.ledger_api.entity.Season; // Or your SeasonDTO
+import com.ledger.ledger_api.entity.Season;
 import com.ledger.ledger_api.service.PlayerService;
-import com.ledger.ledger_api.service.SeasonService; // Or VariantService
+import com.ledger.ledger_api.service.SeasonService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -27,12 +28,12 @@ public class VariantController {
 
     // Catches: GET /api/v1/variants/STANDARD/seasons
     @GetMapping("/{variantType}/seasons")
-    public ResponseEntity<List<Season>> getSeasonsByVariant(
+    public ResponseEntity<List<SeasonHistoryResponse>> getSeasonsByVariant(
             @PathVariable String variantType,
             @AuthenticationPrincipal OAuth2User principal) {
 
         Player player = playerService.getOrCreatePlayer(principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
-        List<Season> pastSeasons = seasonService.getSeasonsByVariant(player.getId(), variantType);
+        List<SeasonHistoryResponse> pastSeasons = seasonService.getSeasonsByVariant(player.getId(), variantType);
 
         return ResponseEntity.ok(pastSeasons);
     }
