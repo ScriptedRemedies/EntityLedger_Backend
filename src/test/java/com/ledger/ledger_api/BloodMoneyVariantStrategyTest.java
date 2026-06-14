@@ -44,6 +44,10 @@ class BloodMoneyVariantStrategyTest {
         // 2. Set up a default, living killer (no specific status needed to pass)
         SeasonRoster roster = new SeasonRoster();
 
+        Killer mockKiller = mock(Killer.class);
+        when(mockKiller.getId()).thenReturn(1L);
+        roster.setKiller(mockKiller);
+
         // 3. Set up the trial (1 pip = +2 funds)
         Trial trial = new Trial();
         trial.setPipProgression(1);
