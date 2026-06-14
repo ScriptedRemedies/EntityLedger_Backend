@@ -32,6 +32,7 @@ public class SecurityConfig {
                 // 4. Configure our Authorization Rules
                 .authorizeHttpRequests(auth -> auth
                         // The reference data (Killers, Perks, Addons) is completely public
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/reference-data/**").permitAll()
                         // EVERYTHING else (syncing players, starting seasons) requires a valid Google token
                         .anyRequest().authenticated()
