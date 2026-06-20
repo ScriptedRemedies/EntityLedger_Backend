@@ -29,6 +29,12 @@ public class SecurityConfig {
                 // 2. Disable CSRF (Safe to do because we are using stateless JWTs, not browser session cookies)
                 .csrf(csrf -> csrf.disable())
 
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Session Expired");
+                        })
+                )
+
                 // 4. Configure our Authorization Rules
                 .authorizeHttpRequests(auth -> auth
                         // The reference data (Killers, Perks, Addons) is completely public
