@@ -34,4 +34,13 @@ public class TrialController {
         TrialSummaryResponse response = trialService.submitTrial(request, player.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @ExceptionHandler(com.ledger.ledger_api.exception.ResourceNotFoundException.class)
+    public ResponseEntity<String> handleNotFound(com.ledger.ledger_api.exception.ResourceNotFoundException ex) {
+        // 1. Force the exact error message to print in the Render backend logs
+        System.err.println("🚨 SILENT 404 REVEALED: " + ex.getMessage());
+
+        // 2. Send the exact message back to the browser Network tab
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
 }
