@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ledger.ledger_api.entity.AddOn;
 import com.ledger.ledger_api.entity.Killer;
 import com.ledger.ledger_api.entity.Perk;
+import com.ledger.ledger_api.entity.Emblem;
 import com.ledger.ledger_api.repository.AddOnRepository;
 import com.ledger.ledger_api.repository.KillerRepository;
 import com.ledger.ledger_api.repository.PerkRepository;
+import com.ledger.ledger_api.repository.EmblemRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -22,12 +24,14 @@ public class DataSeeder implements CommandLineRunner {
     private final KillerRepository killerRepo;
     private final PerkRepository perkRepo;
     private final AddOnRepository addOnRepo;
+    private final EmblemRepository emblemRepo;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public DataSeeder(KillerRepository killerRepo, PerkRepository perkRepo, AddOnRepository addOnRepo) {
+    public DataSeeder(KillerRepository killerRepo, PerkRepository perkRepo, AddOnRepository addOnRepo, EmblemRepository emblemRepo) {
         this.killerRepo = killerRepo;
         this.perkRepo = perkRepo;
         this.addOnRepo = addOnRepo;
+        this.emblemRepo = emblemRepo;
     }
 
     @Override
@@ -36,6 +40,7 @@ public class DataSeeder implements CommandLineRunner {
         seedKillers();
         seedPerks();
         seedAddOns();
+        seedEmblems();
     }
 
     private void seedKillers() {
@@ -148,6 +153,23 @@ public class DataSeeder implements CommandLineRunner {
             System.out.println("Add-ons synchronized safely from JSON.");
         } catch (Exception e) {
             System.err.println("Failed to seed add-ons: " + e.getMessage());
+        }
+    }
+
+    private void seedEmblems() {
+        // Only run this if the table is completely empty
+        if (emblemRepo.count() == 0) {
+
+            // Automatically loop through your Enums to create all 20 combinations
+            for (Emblem.EmblemCategory category : Emblem.EmblemCategory.values()) {
+                for (Emblem.EmblemType type : Emblem.EmblemType.values()) {
+                    Emblem emblem = new Emblem();
+                    emblem.setCategory(category);
+                    emblem.setType(type);
+                    emblemRepo.save(emblem);
+                }
+            }
+            System.out.println("All 20 Emblems successfully seeded!");
         }
     }
 
