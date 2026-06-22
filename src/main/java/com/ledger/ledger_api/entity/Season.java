@@ -51,6 +51,14 @@ public class Season {
 
     private Integer currentPips = 0;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SeasonPhase currentPhase = SeasonPhase.DRAFTING;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> draftState = new java.util.HashMap<>();
+
     // Maps directly to a PostgreSQL JSONB column for flexible variant rules
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
@@ -65,5 +73,9 @@ public class Season {
 
     public enum SeasonStatus {
         ACTIVE, COMPLETED, FAILED_TIME, FAILED_ROSTER
+    }
+
+    public enum SeasonPhase {
+        DRAFTING, AWAITING_RESULTS
     }
 }

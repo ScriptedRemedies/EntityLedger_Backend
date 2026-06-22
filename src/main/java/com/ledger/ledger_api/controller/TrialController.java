@@ -14,6 +14,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/trials")
 public class TrialController {
@@ -35,12 +37,15 @@ public class TrialController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @ExceptionHandler(com.ledger.ledger_api.exception.ResourceNotFoundException.class)
-    public ResponseEntity<String> handleNotFound(com.ledger.ledger_api.exception.ResourceNotFoundException ex) {
-        // 1. Force the exact error message to print in the Render backend logs
-        System.err.println("🚨 SILENT 404 REVEALED: " + ex.getMessage());
+    @PostMapping("/{seasonId}/start")
+    public ResponseEntity<Void> startTrialLockIn(
+            @PathVariable UUID seasonId,
+            @AuthenticationPrincipal OAuth2User principal) {
 
-        // 2. Send the exact message back to the browser Network tab
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        Player player = playerService.getOrCreatePlayer(
+                principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
+
+        trialService.lockInTrialPhase(seasonId, player.getId());
+        return ResponseEntity.ok().build();
     }
 }

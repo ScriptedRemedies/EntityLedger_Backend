@@ -4,6 +4,7 @@ import com.ledger.ledger_api.dto.SeasonCreateRequest;
 import com.ledger.ledger_api.dto.SeasonDetailsResponse;
 import com.ledger.ledger_api.dto.VariantStatsResponse;
 import com.ledger.ledger_api.dto.SeasonHistoryResponse;
+import com.ledger.ledger_api.dto.DraftUpdateRequest;
 import com.ledger.ledger_api.entity.Player;
 import com.ledger.ledger_api.entity.Season;
 import com.ledger.ledger_api.entity.Trial;
@@ -118,6 +119,19 @@ public class SeasonController {
         // Execute the sale
         Season updatedSeason = seasonService.sellKiller(player.getId(), seasonId, killerId);
 
+        return ResponseEntity.ok(updatedSeason);
+    }
+
+    @PatchMapping("/{seasonId}/draft")
+    public ResponseEntity<Season> updateDraftState(
+            @PathVariable UUID seasonId,
+            @RequestBody DraftUpdateRequest request,
+            @AuthenticationPrincipal OAuth2User principal) {
+
+        Player player = playerService.getOrCreatePlayer(
+                principal.getName(), principal.getAttribute("email"), principal.getAttribute("name"));
+
+        Season updatedSeason = seasonService.updateDraftState(player.getId(), seasonId, request);
         return ResponseEntity.ok(updatedSeason);
     }
 }

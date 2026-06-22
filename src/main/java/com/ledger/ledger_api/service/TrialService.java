@@ -113,6 +113,9 @@ public class TrialService {
             season.setEndDate(java.time.LocalDateTime.now()); // Set the official end timestamp
         }
 
+        season.setCurrentPhase(Season.SeasonPhase.DRAFTING);
+        season.setDraftState(new java.util.HashMap<>());
+
         trialRepo.save(trial);
         rosterRepo.save(killerRoster);
         seasonRepo.save(season);
@@ -166,5 +169,19 @@ public class TrialService {
     @Transactional(readOnly = true)
     public List<Trial> getTrialsBySeason(UUID seasonId) {
         return trialRepo.findAllBySeasonIdOrderByTrialNumberAsc(seasonId);
+    }
+
+    @Transactional
+    public void lockInTrialPhase(UUID seasonId, UUID playerId) {
+        Season season = seasonRepo.findById(seasonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
+
+        if (!season.getPlayer().getId().equals(playerId)) {
+            throw new IllegalStateException("You do not have permission to modify this season.");
+        }
+
+        // ANTI-CHEAT: Lock the frontend into the Results Overlay
+        season.setCurrentPhase(Season.SeasonPhase.AWAITING_RESULTS);
+        seasonRepo.save(season);
     }
 }

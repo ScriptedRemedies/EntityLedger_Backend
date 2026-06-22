@@ -13,6 +13,7 @@ public record SeasonDetailsResponse(
         UUID seasonId,
         Season.VariantType variantType,
         Season.SeasonStatus status,
+        Season.SeasonPhase currentPhase,
         LocalDateTime startDate,
         LocalDateTime endDate,
         GradeRule.Grade currentGrade,
@@ -26,6 +27,8 @@ public record SeasonDetailsResponse(
 
         // The list of all 36+ killers and their current status for this season
         List<RosterItemDto> roster,
+
+        Map<String, Object> draftState,
 
         String characterName,
         String characterImageUrl,

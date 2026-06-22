@@ -66,7 +66,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(frontendUrl));
 
         // Allow standard REST methods + OPTIONS (OPTIONS is required for browsers to do pre-flight checks)
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
         // Allow the specific headers we need (Authorization for the token, Content-Type for JSON)
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));

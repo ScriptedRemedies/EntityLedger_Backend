@@ -193,8 +193,10 @@ public class SeasonService {
 
         return new SeasonDetailsResponse(
                 season.getId(), season.getVariantType(), season.getStatus(),
+                season.getCurrentPhase(),
                 season.getStartDate(), season.getEndDate(), season.getCurrentGrade(),
                 season.getCurrentPips(), season.getVariantState(), statsDto, rosterDtos,
+                season.getDraftState(),
                 characterName, characterImageUrl, daysLeft
         );
     }
@@ -436,6 +438,46 @@ public class SeasonService {
                 awards, topKillers, financials, totalRevenue, totalDebt,
                 avgTime, mulligansBurned, flawlessCount, avgPerkVal
         );
+    }
+
+    @Transactional
+    public Season updateDraftState(UUID playerId, UUID seasonId, com.ledger.ledger_api.dto.DraftUpdateRequest request) {
+        Season season = seasonRepo.findById(seasonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
+
+        if (!season.getPlayer().getId().equals(playerId)) {
+            throw new IllegalStateException("You do not have permission to modify this season.");
+        }
+
+        // ANTI-CHEAT: Reject draft changes if they are locked into a trial!
+        if (season.getCurrentPhase() != Season.SeasonPhase.DRAFTING) {
+            throw new IllegalStateException("Cannot modify loadout while a trial is in progress.");
+        }
+
+        Map<String, Object> draft = season.getDraftState();
+        if (draft == null) draft = new HashMap<>();
+
+        // 1. Remember which killer they are currently looking at
+        draft.put("currentKillerId", request.killerId());
+
+        // 2. Safely extract the nested 'loadouts' dictionary (or create it)
+        @SuppressWarnings("unchecked")
+        Map<String, Map<String, List<Long>>> oldLoadouts =
+                (Map<String, Map<String, List<Long>>>) draft.getOrDefault("loadouts", new HashMap<>());
+
+        Map<String, Map<String, List<Long>>> loadouts = new java.util.HashMap<>(oldLoadouts);
+
+        // 3. Package this specific killer's perks and addons
+        Map<String, List<Long>> killerLoadout = new HashMap<>();
+        killerLoadout.put("perks", request.perkIds() != null ? request.perkIds() : new ArrayList<>());
+        killerLoadout.put("addons", request.addOnIds() != null ? request.addOnIds() : new ArrayList<>());
+
+        // 4. Save it into the dictionary using the Killer ID as the key
+        loadouts.put(String.valueOf(request.killerId()), killerLoadout);
+        draft.put("loadouts", loadouts);
+
+        season.setDraftState(new java.util.HashMap<>(draft));
+        return seasonRepo.save(season);
     }
 
     // Sell Killer logic for Blood Money & Afterburn
